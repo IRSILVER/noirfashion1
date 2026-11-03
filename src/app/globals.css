@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
 @theme {
-  --color-noir: #141210;
-  --color-espresso: #2b211a;
-  --color-brown: #4e4032;
-  --color-taupe: #8a7a68;
-  --color-champagne: #b48f5c;
-  --color-champagne-light: #d9c19a;
-  --color-sand: #f2e2d2;
-  --color-beige: #e6d6c2;
-  --color-cream: #f4ece0;
-  --color-ivory: #faf6ef;
-  --color-line: #e3d5c3;
+  --color-noir: #0e0c0a;
+  --color-espresso: #1f1610;
+  --color-brown: #3a2d21;
+  --color-taupe: #5f5040;
+  --color-champagne: #8c6a38;
+  --color-champagne-light: #d2b88c;
+  --color-sand: #ecd9c4;
+  --color-beige: #ddc9b0;
+  --color-cream: #efe4d3;
+  --color-ivory: #f6eee1;
+  --color-line: #cdb99f;
 
   --font-serif: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
   --font-sans: var(--font-jost), "Jost", system-ui, sans-serif;
@@ -25,10 +25,12 @@
     background: var(--color-ivory);
     color: var(--color-espresso);
     font-family: var(--font-sans);
-    font-weight: 400;
+    font-weight: 500;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
+  h1, h2, h3, h4, .font-serif { font-weight: 600; }
+  .font-light { font-weight: 500 !important; }
   ::selection { background: var(--color-champagne-light); color: var(--color-noir); }
   :focus-visible { outline: 1px solid var(--color-champagne); outline-offset: 3px; }
   input, select, textarea, button { font: inherit; }
@@ -40,15 +42,15 @@
 
   .eyebrow {
     font-size: 0.6875rem; letter-spacing: 0.32em; text-transform: uppercase;
-    color: var(--color-champagne); font-weight: 500;
+    color: var(--color-champagne); font-weight: 600;
   }
   .heading-display {
-    font-family: var(--font-serif); font-weight: 400; letter-spacing: 0.04em; line-height: 1.05;
+    font-family: var(--font-serif); font-weight: 600; letter-spacing: 0.04em; line-height: 1.05;
   }
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem;
-    min-height: 3.25rem; padding: 0 2rem; font-size: 0.72rem; font-weight: 500;
-    letter-spacing: 0.24em; text-transform: uppercase; transition: all 0.4s var(--ease-luxe);
+    min-height: 3.25rem; padding: 0 2rem; font-size: 0.75rem; font-weight: 600;
+    letter-spacing: 0.22em; text-transform: uppercase; transition: all 0.4s var(--ease-luxe);
     border: 1px solid transparent; cursor: pointer; white-space: nowrap;
   }
   .btn:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -72,11 +74,11 @@
     transition: border-color 0.3s;
   }
   .field:focus { outline: none; border-color: var(--color-espresso); }
-  .field::placeholder { color: #b3a594; }
+  .field::placeholder { color: #8a7a68; }
   .field[aria-invalid="true"] { border-color: #a4402f; }
   .field-label {
     display: flex; justify-content: space-between; font-size: 0.68rem; letter-spacing: 0.2em;
-    text-transform: uppercase; color: var(--color-brown);
+    text-transform: uppercase; color: var(--color-brown); font-weight: 600;
   }
 
   /* Admin form controls: boxed, compact, practical */

@@ -4,10 +4,10 @@ import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, SLOGAN } from "@/lib/site";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
-  subsets: ["latin"], weight: ["300", "400", "500", "600"], style: ["normal", "italic"],
+  subsets: ["latin"], weight: ["400", "500", "600", "700"], style: ["normal", "italic"],
   variable: "--font-cormorant", display: "swap",
 });
-const jost = Jost({ subsets: ["latin"], weight: ["300", "400", "500"], variable: "--font-jost", display: "swap" });
+const jost = Jost({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-jost", display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
