@@ -12,7 +12,7 @@ export default async function EditProduct({ params }: { params: Promise<{ id: st
   const { supabase } = await requireAdmin();
   const [{ data }, { data: brands }, { data: categories }] = await Promise.all([
     supabase.from("products").select(PRODUCT_SELECT).eq("id", id).maybeSingle(),
-    supabase.from("brands").select("id, name").order("sort_order").order("name"),
+    supabase.from("brands").select("id, name, slug").order("sort_order").order("name"),
     supabase.from("categories").select("id, name").order("sort_order").order("name"),
   ]);
   if (!data) notFound();

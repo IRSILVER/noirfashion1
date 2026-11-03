@@ -4,10 +4,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { saveBrand, saveProduct, type ProductPayload } from "@/app/admin/actions";
 import { CONDITION_LABELS } from "@/lib/format";
-import { getBrowserClient } from "@/lib/supabase/browser";
+import { removeUploadedImage, uploadImage } from "@/lib/upload";
 import type { Product, ProductCondition } from "@/lib/types";
 
-type Opt = { id: string; name: string };
+type Opt = { id: string; name: string; slug?: string };
 type ImgRow = { id?: string; url: string; storage_path: string | null; alt: string; isNew?: boolean };
 type VarRow = { key: string; id?: string; size: string; stock: string; price: string; sale_price: string };
 
@@ -15,27 +15,6 @@ const QUICK_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "One size"];
 const toInput = (n: number | null | undefined) => (n == null ? "" : String(n).replace(".", ","));
 let keySeq = 0;
 const newKey = () => `k${++keySeq}`;
-
-/** Resizes photos in the browser before upload: faster pages, lower storage use. */
-async function optimizeImage(file: File): Promise<{ blob: Blob; ext: string; type: string }> {
-  try {
-    const bitmap = await createImageBitmap(file);
-    const max = 2000;
-    const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const webp = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/webp", 0.86));
-    if (webp && webp.type === "image/webp") return { blob: webp, ext: "webp", type: "image/webp" };
-    const jpg = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", 0.88));
-    if (jpg) return { blob: jpg, ext: "jpg", type: "image/jpeg" };
-  } catch { /* fall through to original */ }
-  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-    throw new Error("Dit bestandstype wordt niet ondersteund. Gebruik JPG, PNG of WEBP.");
-  }
-  return { blob: file, ext: file.type.split("/")[1].replace("jpeg", "jpg"), type: file.type };
-}
 
 export function ProductForm({ product, brands: initialBrands, categories }: { product?: Product; brands: Opt[]; categories: Opt[] }) {
   const router = useRouter();
@@ -81,17 +60,12 @@ export function ProductForm({ product, brands: initialBrands, categories }: { pr
   // ---------------------------------------------------------------- photos
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return;
-    const supabase = getBrowserClient();
     setMessage(null);
     for (const file of Array.from(files).slice(0, 15)) {
       setUploading((n) => n + 1);
       try {
         if (file.size > 25 * 1024 * 1024) throw new Error(`${file.name} is groter dan 25 MB.`);
-        const { blob, ext, type } = await optimizeImage(file);
-        const path = `products/${crypto.randomUUID()}.${ext}`;
-        const { error } = await supabase.storage.from("product-images").upload(path, blob, { contentType: type, cacheControl: "31536000", upsert: false });
-        if (error) throw new Error(`Uploaden van ${file.name} mislukt: ${error.message}`);
-        const url = supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+        const { url, path } = await uploadImage(file, "products");
         setImages((imgs) => [...imgs, { url, storage_path: path, alt: "", isNew: true }]);
         setDirty(true);
       } catch (e) {
@@ -108,7 +82,7 @@ export function ProductForm({ product, brands: initialBrands, categories }: { pr
     setImages((imgs) => imgs.filter((_, i) => i !== idx));
     setDirty(true);
     // A photo that was never saved can be removed from storage right away.
-    if (img.isNew && img.storage_path) await getBrowserClient().storage.from("product-images").remove([img.storage_path]);
+    if (img.isNew && img.storage_path) await removeUploadedImage(img.storage_path);
   };
   const moveImage = (idx: number, dir: -1 | 1) => {
     setImages((imgs) => {
@@ -127,7 +101,7 @@ export function ProductForm({ product, brands: initialBrands, categories }: { pr
     start(async () => {
       const res = await saveBrand({ name: newBrand });
       if (!res.ok) { setMessage({ ok: false, text: res.error }); return; }
-      setBrands((b) => [...b, { id: res.id, name: res.name }].sort((a, c) => a.name.localeCompare(c.name, "nl")));
+      setBrands((b) => [...b, { id: res.id, name: res.name, slug: res.slug }].sort((a, c) => a.name.localeCompare(c.name, "nl")));
       upd("brand_id", res.id);
       setNewBrand(null);
     });
@@ -174,6 +148,7 @@ export function ProductForm({ product, brands: initialBrands, categories }: { pr
               <div>
                 <label htmlFor="brand" className="a-label">Merk</label>
                 {newBrand === null ? (
+                  <>
                   <div className="flex gap-2">
                     <select id="brand" value={f.brand_id} onChange={(e) => upd("brand_id", e.target.value)} className="a-input">
                       <option value="">— Kies een merk —</option>
@@ -181,6 +156,13 @@ export function ProductForm({ product, brands: initialBrands, categories }: { pr
                     </select>
                     <button type="button" onClick={() => setNewBrand("")} className="a-btn a-btn-ghost shrink-0" title="Nieuw merk toevoegen">+ Nieuw</button>
                   </div>
+                  {(() => {
+                    const b = brands.find((x) => x.id === f.brand_id);
+                    return b?.slug
+                      ? <p className="mt-1 text-xs text-taupe">Verschijnt automatisch op <span className="text-espresso">/merken/{b.slug}</span>{!f.is_published && " (zodra het product online staat)"}</p>
+                      : <p className="mt-1 text-xs text-taupe">Kies een merk om het product op de merkpagina te tonen.</p>;
+                  })()}
+                  </>
                 ) : (
                   <div className="flex gap-2">
                     <input autoFocus value={newBrand} onChange={(e) => setNewBrand(e.target.value)} className="a-input" placeholder="Naam nieuw merk"

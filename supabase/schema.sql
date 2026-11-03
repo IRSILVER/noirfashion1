@@ -46,8 +46,13 @@ create table if not exists public.brands (
   description text,
   is_active   boolean not null default true,
   sort_order  int not null default 0,
+  header_image_url    text,
+  header_storage_path text,
   created_at  timestamptz not null default now()
 );
+-- (older installs) brand header image columns
+alter table public.brands add column if not exists header_image_url text;
+alter table public.brands add column if not exists header_storage_path text;
 
 create table if not exists public.categories (
   id         uuid primary key default gen_random_uuid(),
@@ -445,7 +450,7 @@ create policy "noir admin delete images" on storage.objects for delete to authen
 -- Starting data: brands and categories only (no products, prices or stock)
 -- ---------------------------------------------------------------------
 insert into public.brands (name, slug, sort_order) values
-  ('Fear of God Essentials', 'fear-of-god-essentials', 1),
+  ('Fear of God Essentials', 'essentials', 1),
   ('Hermès', 'hermes', 2),
   ('ALO Yoga', 'alo-yoga', 3),
   ('Acne Studios', 'acne-studios', 4),

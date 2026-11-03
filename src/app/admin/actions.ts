@@ -228,27 +228,76 @@ export async function updatePrices(input: {
 
 // ============================================================ brands & cats
 
-export async function saveBrand(b: { id?: string; name: string; slug?: string; description?: string; is_active?: boolean; sort_order?: number }): Promise<Result<{ id: string; name: string }>> {
+export interface BrandPayload {
+  id?: string; name: string; slug?: string; description?: string; is_active?: boolean; sort_order?: number;
+  header_image_url?: string | null; header_storage_path?: string | null;
+}
+
+export async function saveBrand(b: BrandPayload): Promise<Result<{ id: string; name: string; slug: string }>> {
   const { supabase } = await requireAdmin();
   const name = b.name?.trim();
   if (!name) return { ok: false, error: "Vul een merknaam in." };
-  const row = {
-    name, slug: slugify(b.slug?.trim() || name), description: b.description?.trim() || null,
-    is_active: b.is_active ?? true, sort_order: Number.isFinite(b.sort_order) ? Number(b.sort_order) : 100,
+  if (name.length > 80) return { ok: false, error: "De merknaam mag maximaal 80 tekens bevatten." };
+  const slug = slugify(b.slug?.trim() || name);
+  if (!slug) return { ok: false, error: "Vul een geldige URL-naam in (letters en cijfers)." };
+  if (["nieuw", "admin"].includes(slug)) return { ok: false, error: "Deze URL-naam is niet toegestaan." };
+  const headerUrl = b.header_image_url?.trim() || null;
+  if (headerUrl && !headerUrl.startsWith("https://")) return { ok: false, error: "Ongeldige merkfoto." };
+
+  let sortOrder = Number.isFinite(b.sort_order) ? Number(b.sort_order) : null;
+  if (sortOrder === null && !b.id) {
+    const { data: last } = await supabase.from("brands").select("sort_order").order("sort_order", { ascending: false }).limit(1).maybeSingle();
+    sortOrder = (last?.sort_order ?? 0) + 1;
+  }
+
+  // Replacing or removing a header photo → delete the old file from storage.
+  let oldPath: string | null = null;
+  if (b.id) {
+    const { data: old } = await supabase.from("brands").select("header_storage_path").eq("id", b.id).maybeSingle();
+    if (old?.header_storage_path && old.header_storage_path !== (b.header_storage_path ?? null)) oldPath = old.header_storage_path;
+  }
+
+  const row: Record<string, unknown> = {
+    name, slug, description: b.description?.trim() || null, is_active: b.is_active ?? true,
+    header_image_url: headerUrl, header_storage_path: headerUrl ? b.header_storage_path ?? null : null,
   };
+  if (sortOrder !== null) row.sort_order = sortOrder;
+
   const { data, error } = b.id
     ? await supabase.from("brands").update(row).eq("id", b.id).select("id").single()
     : await supabase.from("brands").insert(row).select("id").single();
-  if (error) return { ok: false, error: error.code === "23505" ? "Er bestaat al een merk met deze naam/URL." : error.message };
+  if (error) {
+    if (error.code === "23505") return { ok: false, error: "Er bestaat al een merk met deze URL-naam. Kies een andere." };
+    if (error.message?.includes("header_")) return { ok: false, error: "Voer eerst update-2-merken.sql uit in Supabase (zie README)." };
+    return { ok: false, error: error.message };
+  }
+  if (oldPath) await supabase.storage.from("product-images").remove([oldPath]);
   refreshShop();
-  return { ok: true, id: data.id as string, name };
+  revalidatePath("/admin", "layout");
+  return { ok: true, id: data.id as string, name, slug };
 }
 
+/** Saves the brand order shown on the website (first in list = first on site). */
+export async function reorderBrands(ids: string[]): Promise<Result> {
+  const { supabase } = await requireAdmin();
+  for (const [i, id] of ids.entries()) {
+    const { error } = await supabase.from("brands").update({ sort_order: i + 1 }).eq("id", id);
+    if (error) return { ok: false, error: error.message };
+  }
+  refreshShop();
+  revalidatePath("/admin", "layout");
+  return { ok: true };
+}
+
+/** Deletes a brand. Its products stay in the shop (without brand); past orders keep the brand name. */
 export async function deleteBrand(id: string): Promise<Result> {
   const { supabase } = await requireAdmin();
+  const { data: brand } = await supabase.from("brands").select("header_storage_path").eq("id", id).maybeSingle();
   const { error } = await supabase.from("brands").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
+  if (brand?.header_storage_path) await supabase.storage.from("product-images").remove([brand.header_storage_path]);
   refreshShop();
+  revalidatePath("/admin", "layout");
   return { ok: true };
 }
 

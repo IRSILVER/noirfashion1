@@ -13,7 +13,7 @@ const NAV = [
   { href: "/admin/producten/nieuw", label: "Product toevoegen" },
   { href: "/admin/voorraad", label: "Voorraad" },
   { href: "/admin/prijzen", label: "Prijzen" },
-  { href: "/admin/merken", label: "Merken" },
+  { href: "/admin/merken", label: "Merken beheren" },
   { href: "/admin/categorieen", label: "Categorieën" },
   { href: "/admin/klanten", label: "Klantgegevens" },
   { href: "/admin/instellingen", label: "Instellingen" },

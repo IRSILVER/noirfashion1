@@ -16,6 +16,12 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: supabaseHost, pathname: "/storage/v1/object/public/**" },
     ],
   },
+  async redirects() {
+    return [
+      // old brand URL → new short URL
+      { source: "/merken/fear-of-god-essentials", destination: "/merken/essentials", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

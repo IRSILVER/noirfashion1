@@ -20,6 +20,8 @@ export interface Brand {
   description: string | null;
   is_active: boolean;
   sort_order: number;
+  header_image_url?: string | null;
+  header_storage_path?: string | null;
 }
 
 export interface Category {

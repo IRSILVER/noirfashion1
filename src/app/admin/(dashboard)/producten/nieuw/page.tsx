@@ -7,7 +7,7 @@ export const metadata = { title: "Product toevoegen" };
 export default async function NewProduct() {
   const { supabase } = await requireAdmin();
   const [{ data: brands }, { data: categories }] = await Promise.all([
-    supabase.from("brands").select("id, name").order("sort_order").order("name"),
+    supabase.from("brands").select("id, name, slug").order("sort_order").order("name"),
     supabase.from("categories").select("id, name").order("sort_order").order("name"),
   ]);
   return (

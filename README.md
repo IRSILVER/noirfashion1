@@ -84,6 +84,32 @@ New orders always appear in the dashboard (counter + pop-up while it's open). Fo
 
 ---
 
+## Your admin account (only you)
+Customers never need an account: they browse, use the cart and order as guests. The dashboard is only for you, at **/admin**.
+
+**Create your login (no command line needed):**
+1. Supabase → **Authentication → Sign In / Providers → Email**: turn **off** "Allow new users to sign up". Nobody can create an account from the website.
+2. Supabase → **Authentication → Users → Add user → Create new user**: your email + a strong password (12+ characters), tick **Auto Confirm User**.
+3. Open `supabase/create-admin.sql`, put your email in it, paste it in the **SQL Editor** → **Run**. The last line should show your email.
+4. Go to `/admin`, log in, done. (Alternative for developers: `npm run create-admin`.)
+
+**How it is protected (several layers):**
+- `/admin` without being logged in → redirected to `/admin/login` before any page loads (`src/proxy.ts`).
+- Every dashboard page and every admin action checks again that you are logged in **and** listed as admin. A normal account, even with a correct password, is refused and logged out.
+- The database itself (Row Level Security) only lets admins read orders/customer data or change products, prices, brands, stock and settings, and only admins can upload photos. Visitors can only read published products and submit an order through one checked function.
+- Nobody can make themselves admin from the website: the admin list can only be changed in the Supabase SQL Editor.
+- Passwords are stored hashed by Supabase Auth, and Supabase limits repeated login attempts. The service_role key is never used by the website.
+- Dashboard pages are never indexed by search engines or cached.
+
+To remove admin rights later, see the bottom of `supabase/create-admin.sql`. To change your password: Supabase → Authentication → Users → your user → **Send password recovery**, or set it there directly.
+
+## Update 2 — brand pages & brand management
+1. Upload the new files to GitHub (they replace the old ones) → Vercel redeploys automatically.
+2. Supabase → **SQL Editor** → paste `supabase/update-2-merken.sql` → **Run** (once). It adds the brand header photo, changes the Essentials URL to `/merken/essentials` (the old URL redirects) and makes sure all 10 brands exist. Products, prices and orders are not touched.
+3. Dashboard → **Merken beheren**: add/rename/delete brands, upload a header photo, set the order with ▲ ▼.
+
+Every brand automatically has a page at `/merken/<webadres>`. A product appears there as soon as you pick that brand in the product form and the product is online. Brands you add later get their page immediately.
+
 ## Before you go live — please check
 - **Legal texts are drafts, not legal advice.** Privacy, Voorwaarden and Retourneren contain marked placeholders. Have them checked.
 - **Registration:** in the Netherlands, selling regularly with the aim of making a profit usually means you must register with the KvK, and consumer rights such as the 14-day withdrawal right for distance sales then apply. Check this at kvk.nl. The site deliberately makes no claim that NOIR FASHION is registered.

@@ -17,7 +17,7 @@ export function ProductRowActions({ id, slug, name, published, soldOut }: { id: 
     <div className={`flex flex-wrap gap-2 ${pending ? "opacity-50" : ""}`}>
       <Link href={`/admin/producten/${id}`} className="a-btn a-btn-ghost min-h-9 px-3 text-xs">Bewerken</Link>
       <button type="button" disabled={pending} onClick={() => run(() => setProductFlag(id, "is_published", !published))} className="a-btn a-btn-ghost min-h-9 px-3 text-xs">
-        {published ? "Verbergen" : "Publiceren"}
+        {published ? "Verbergen" : "Opnieuw publiceren"}
       </button>
       <button type="button" disabled={pending} onClick={() => run(() => setProductFlag(id, "is_sold_out", !soldOut))} className="a-btn a-btn-ghost min-h-9 px-3 text-xs">
         {soldOut ? "Weer beschikbaar" : "Uitverkocht"}
