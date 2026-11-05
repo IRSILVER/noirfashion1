@@ -110,6 +110,12 @@ To remove admin rights later, see the bottom of `supabase/create-admin.sql`. To 
 
 Every brand automatically has a page at `/merken/<webadres>`. A product appears there as soon as you pick that brand in the product form and the product is online. Brands you add later get their page immediately.
 
+## Update 3 — homepage button & discount codes
+1. The homepage button now says **Bekijk de merken** and goes to the brand overview. The old "Collectie"/"Shop nu" page is gone (`/collectie` redirects to `/merken`); search, "Nieuw binnen" and category links use `/zoeken`.
+2. Supabase → **SQL Editor** → run `supabase/update-3-kortingscodes.sql` once (adds the discount-code table and updates the order function; products and orders are untouched).
+3. Dashboard → **Kortingscodes**: create codes (name, percentage or fixed euro amount, maximum number of uses), see how often each was used, edit or delete them. A code expires automatically when its maximum is reached; cancelling an order gives the use back.
+4. Customers fill in the code at checkout; the discount is calculated by the database, never by the browser. Orders keep the code name and the discount they received.
+
 ## Before you go live — please check
 - **Legal texts are drafts, not legal advice.** Privacy, Voorwaarden and Retourneren contain marked placeholders. Have them checked.
 - **Registration:** in the Netherlands, selling regularly with the aim of making a profit usually means you must register with the KvK, and consumer rights such as the 14-day withdrawal right for distance sales then apply. Check this at kvk.nl. The site deliberately makes no claim that NOIR FASHION is registered.

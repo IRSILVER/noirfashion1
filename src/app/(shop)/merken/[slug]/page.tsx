@@ -79,8 +79,8 @@ export default async function BrandPage({ params, searchParams }: Props) {
 
         {products.length === 0 ? (
           <EmptyState title={`Nog geen ${brand.name} beschikbaar`}
-            text="Er zijn op dit moment nog geen items van dit merk online. Nieuwe stukken worden regelmatig toegevoegd — bekijk intussen de rest van de collectie."
-            href="/collectie" cta="Naar de collectie" />
+            text="Er zijn op dit moment nog geen items van dit merk online. Nieuwe stukken worden regelmatig toegevoegd — bekijk intussen de andere merken."
+            href="/merken" cta="Alle merken" />
         ) : (
           <ShopFilters basePath={`/merken/${brand.slug}`} query={query} brands={[]} categories={catOpts}
             sizes={availableSizes(products)} total={list.length} hideBrand>

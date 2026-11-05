@@ -20,6 +20,11 @@ const nextConfig: NextConfig = {
     return [
       // old brand URL → new short URL
       { source: "/merken/fear-of-god-essentials", destination: "/merken/essentials", permanent: true },
+      // the old "Collectie" / "Shop nu" page is gone: searches and filters move to /zoeken, the rest to the brand overview
+      { source: "/collectie", has: [{ type: "query", key: "q" }], destination: "/zoeken", permanent: true },
+      { source: "/collectie", has: [{ type: "query", key: "nieuw" }], destination: "/zoeken", permanent: true },
+      { source: "/collectie", has: [{ type: "query", key: "categorie" }], destination: "/zoeken", permanent: true },
+      { source: "/collectie", destination: "/merken", permanent: true },
     ];
   },
   async headers() {

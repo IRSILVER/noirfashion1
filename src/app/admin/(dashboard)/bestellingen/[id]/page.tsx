@@ -65,6 +65,12 @@ export default async function OrderDetail({ params }: { params: Promise<{ id: st
                 </li>
               ))}
             </ul>
+            {Number(order.discount_amount) > 0 && (
+              <div className="space-y-1 border-t border-line px-5 py-4 text-sm">
+                <div className="flex justify-between"><span>Subtotaal</span><span>{formatPrice(Number(order.total) + Number(order.discount_amount))}</span></div>
+                <div className="flex justify-between text-champagne"><span>Kortingscode {order.discount_code}</span><span>−{formatPrice(Number(order.discount_amount))}</span></div>
+              </div>
+            )}
             <div className="flex justify-between border-t border-line px-5 py-4">
               <span>Totaal (excl. eventuele verzendkosten)</span><strong>{formatPrice(order.total)}</strong>
             </div>

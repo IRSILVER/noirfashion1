@@ -42,8 +42,7 @@ export default async function HomePage() {
             </h1>
             <p className="mt-8 max-w-md text-base leading-relaxed text-brown md:text-lg">{settings.hero_subtitle}</p>
             <div className="mt-11 flex flex-col gap-3 sm:flex-row">
-              <Link href="/collectie" className="btn btn-dark">Shop nu <ArrowIcon /></Link>
-              <Link href="/merken" className="btn btn-outline">Ontdek de merken</Link>
+              <Link href="/merken" className="btn btn-dark">Bekijk de merken <ArrowIcon /></Link>
             </div>
           </div>
           <div className="relative mx-auto w-full max-w-[560px] animate-fade-up [animation-delay:150ms]">
@@ -73,7 +72,7 @@ export default async function HomePage() {
 
       {/* NEW ARRIVALS */}
       <section className="container-luxe py-24 md:py-32">
-        <SectionHead eyebrow="Net binnen" title="Nieuw binnen" href="/collectie?nieuw=1" cta="Bekijk alles" />
+        <SectionHead eyebrow="Net binnen" title="Nieuw binnen" href="/zoeken?nieuw=1" cta="Bekijk alles" />
         {newArrivals.length > 0 ? (
           <ProductGrid products={newArrivals} priorityCount={2} />
         ) : (
@@ -91,7 +90,7 @@ export default async function HomePage() {
       {featured.length > 0 && (
         <section className="bg-sand/60 py-24 md:py-32">
           <div className="container-luxe">
-            <SectionHead eyebrow="Onze selectie" title="Uitgelichte producten" href="/collectie" cta="Naar de collectie" />
+            <SectionHead eyebrow="Onze selectie" title="Uitgelichte producten" href="/merken" cta="Bekijk de merken" />
             <ProductGrid products={featured} />
           </div>
         </section>
@@ -117,10 +116,10 @@ export default async function HomePage() {
       {shownCategories.length > 0 && (
         <section className="border-t border-line bg-ivory py-24 md:py-32">
           <div className="container-luxe">
-            <SectionHead eyebrow="Ontdek" title="Categorieën" href="/collectie" cta="Alles bekijken" />
+            <SectionHead eyebrow="Ontdek" title="Categorieën" href="/merken" cta="Bekijk de merken" />
             <div className="grid border-l border-t border-line sm:grid-cols-2 lg:grid-cols-3">
               {shownCategories.map((c, i) => (
-                <Link key={c.id} href={`/collectie?categorie=${c.slug}`}
+                <Link key={c.id} href={`/zoeken?categorie=${c.slug}`}
                   className="group flex items-end justify-between border-b border-r border-line bg-ivory px-7 py-10 transition-colors duration-500 hover:bg-cream">
                   <div>
                     <span className="font-serif text-sm text-champagne">{String(i + 1).padStart(2, "0")}</span>

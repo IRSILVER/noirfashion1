@@ -83,6 +83,8 @@ export interface Order {
   internal_notes: string | null;
   status: OrderStatus;
   total: number;
+  discount_code: string | null;
+  discount_amount: number;
   is_seen: boolean;
   created_at: string;
   updated_at: string;
@@ -119,4 +121,14 @@ export interface ContentPage {
   title: string;
   body: string;
   updated_at: string;
+}
+
+export interface DiscountCode {
+  id: string;
+  code: string;
+  kind: "percent" | "fixed";
+  value: number;
+  max_uses: number | null;
+  used_count: number;
+  created_at: string;
 }

@@ -34,7 +34,7 @@ export function CartDrawer() {
           <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
             <p className="font-serif text-2xl">Je winkelwagen is leeg</p>
             <p className="mt-3 text-sm text-brown">Ontdek onze zorgvuldig geselecteerde stukken.</p>
-            <Link href="/collectie" onClick={close} className="btn btn-dark mt-8">Bekijk de collectie</Link>
+            <Link href="/merken" onClick={close} className="btn btn-dark mt-8">Bekijk de merken</Link>
           </div>
         ) : (
           <>

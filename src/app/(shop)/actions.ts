@@ -39,11 +39,38 @@ export async function getCartQuote(variantIds: string[]): Promise<CartQuoteLine[
   return out;
 }
 
+export type DiscountCheckResult =
+  | { ok: true; code: string; kind: "percent" | "fixed"; value: number; subtotal: number; discount: number; total: number }
+  | { ok: false; message: string };
+
+/** Checks a discount code against the current cart (prices come from the database, never the browser). */
+export async function checkDiscountCode(code: string, items: { variantId: string; quantity: number }[]): Promise<DiscountCheckResult> {
+  const clean = String(code ?? "").trim().toUpperCase().slice(0, 30);
+  if (!clean) return { ok: false, message: "Vul een kortingscode in." };
+  if (!Array.isArray(items) || items.length === 0) return { ok: false, message: ORDER_ERROR_MESSAGES.empty_cart };
+  const db = getPublicClient();
+  if (!db) return { ok: false, message: "De webshop is nog niet gekoppeld aan de database. Probeer het later opnieuw." };
+
+  const quote = await getCartQuote(items.map((i) => i.variantId));
+  const subtotal = Math.round(items.reduce((sum, i) => {
+    const q = quote.find((l) => l.variantId === i.variantId && l.available);
+    const qty = Number.isInteger(i.quantity) && i.quantity > 0 && i.quantity <= 20 ? i.quantity : 0;
+    return sum + (q ? q.price * qty : 0);
+  }, 0) * 100) / 100;
+  if (subtotal <= 0) return { ok: false, message: ORDER_ERROR_MESSAGES.empty_cart };
+
+  const { data, error } = await db.rpc("check_discount_code", { p_code: clean, p_subtotal: subtotal });
+  if (error || !data) return { ok: false, message: ORDER_ERROR_MESSAGES.server_error };
+  if (!data.ok) return { ok: false, message: ORDER_ERROR_MESSAGES.invalid_discount };
+  const discount = Number(data.discount);
+  return { ok: true, code: data.code, kind: data.kind, value: Number(data.value), subtotal, discount, total: Math.round((subtotal - discount) * 100) / 100 };
+}
+
 export type PlaceOrderResult =
-  | { ok: true; orderNumber: string; total: number; items: { product_name: string; brand_name: string | null; size: string; quantity: number; line_total: number }[] }
+  | { ok: true; orderNumber: string; total: number; subtotal: number; discountAmount: number; discountCode: string | null; items: { product_name: string; brand_name: string | null; size: string; quantity: number; line_total: number }[] }
   | { ok: false; message: string; fieldErrors?: CheckoutErrors };
 
-export async function placeOrder(input: CheckoutInput & { website?: string }, items: { variantId: string; quantity: number }[], idempotencyKey: string): Promise<PlaceOrderResult> {
+export async function placeOrder(input: CheckoutInput & { website?: string }, items: { variantId: string; quantity: number }[], idempotencyKey: string, discountCode?: string): Promise<PlaceOrderResult> {
   // Honeypot: real visitors never fill in this hidden field.
   if (input.website) return { ok: false, message: ORDER_ERROR_MESSAGES.server_error };
 
@@ -76,6 +103,7 @@ export async function placeOrder(input: CheckoutInput & { website?: string }, it
     p_email: clean.email.trim() || null,
     p_notes: clean.notes.trim() || null,
     p_items: lines,
+    p_discount_code: String(discountCode ?? "").trim().toUpperCase().slice(0, 30) || null,
   });
 
   if (error || !data) {
@@ -92,12 +120,14 @@ export async function placeOrder(input: CheckoutInput & { website?: string }, it
     await sendOrderNotification({
       order_number: data.order_number, customer_name: clean.name.trim(), total: Number(data.total),
       created_at: new Date().toISOString(), items: data.items ?? [],
+      discount_code: data.discount_code ?? null, discount_amount: Number(data.discount_amount ?? 0),
     });
     revalidatePath("/", "layout"); // stock changed
   }
 
   return {
     ok: true, orderNumber: data.order_number, total: Number(data.total),
+    subtotal: Number(data.subtotal ?? data.total), discountAmount: Number(data.discount_amount ?? 0), discountCode: data.discount_code ?? null,
     items: (data.items ?? []).map((l: { product_name: string; brand_name: string | null; size: string; quantity: number; line_total: number }) => ({
       product_name: l.product_name, brand_name: l.brand_name, size: l.size, quantity: l.quantity, line_total: Number(l.line_total),
     })),

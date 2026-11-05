@@ -198,14 +198,67 @@ create trigger orders_touch before update on public.orders
   for each row execute function public.touch_updated_at();
 
 -- ---------------------------------------------------------------------
+-- Discount codes (managed by the admin; customers can only *use* a code)
+-- ---------------------------------------------------------------------
+create table if not exists public.discount_codes (
+  id         uuid primary key default gen_random_uuid(),
+  code       text not null,
+  kind       text not null check (kind in ('percent', 'fixed')),
+  value      numeric(10,2) not null check (value > 0),
+  max_uses   int check (max_uses is null or max_uses >= 1),   -- NULL = unlimited
+  used_count int not null default 0 check (used_count >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint discount_code_format check (code ~ '^[A-Z0-9_-]{3,30}$'),
+  constraint discount_percent_range check (kind <> 'percent' or value <= 100)
+);
+create unique index if not exists discount_codes_code_idx on public.discount_codes(code);
+
+drop trigger if exists discount_codes_touch on public.discount_codes;
+create trigger discount_codes_touch before update on public.discount_codes
+  for each row execute function public.touch_updated_at();
+
+-- Every order remembers which code was used and how much it saved. Deleting a
+-- code later never changes past orders (code_id becomes NULL, the text stays).
+alter table public.orders add column if not exists discount_code_id uuid references public.discount_codes(id) on delete set null;
+alter table public.orders add column if not exists discount_code text;
+alter table public.orders add column if not exists discount_amount numeric(10,2) not null default 0;
+
+-- The one place where a discount amount is calculated (percent is rounded to
+-- cents; a fixed amount can never be more than the subtotal).
+create or replace function public.discount_amount(p_kind text, p_value numeric, p_subtotal numeric)
+returns numeric language sql immutable as $$
+  select least(greatest(coalesce(p_subtotal, 0), 0),
+               case when p_kind = 'percent' then round(coalesce(p_subtotal, 0) * p_value / 100, 2) else p_value end);
+$$;
+
+-- Used by the checkout to show the discount before ordering. A code that does
+-- not exist and a code that is used up give the same answer on purpose.
+create or replace function public.check_discount_code(p_code text, p_subtotal numeric)
+returns jsonb
+language plpgsql stable security definer set search_path = public
+as $$
+declare v_code discount_codes%rowtype;
+begin
+  select * into v_code from discount_codes where code = upper(btrim(coalesce(p_code, '')));
+  if not found or (v_code.max_uses is not null and v_code.used_count >= v_code.max_uses) then
+    return jsonb_build_object('ok', false, 'error', 'invalid_discount');
+  end if;
+  return jsonb_build_object('ok', true, 'code', v_code.code, 'kind', v_code.kind, 'value', v_code.value,
+                            'discount', public.discount_amount(v_code.kind, v_code.value, p_subtotal));
+end;
+$$;
+
+-- ---------------------------------------------------------------------
 -- place_order: the ONLY way the public can create an order.
 -- Validates input, prices every line from the database (never from the
 -- browser), reserves stock atomically and is idempotent per checkout.
 -- ---------------------------------------------------------------------
+drop function if exists public.place_order(uuid, text, text, text, text, text, jsonb);
 create or replace function public.place_order(
   p_idempotency_key uuid,
   p_name text, p_phone text, p_snapchat text, p_email text, p_notes text,
-  p_items jsonb)
+  p_items jsonb, p_discount_code text default null)
 returns jsonb
 language plpgsql security definer set search_path = public
 as $$
@@ -225,6 +278,10 @@ declare
   v_snap text := nullif(btrim(coalesce(p_snapchat, '')), '');
   v_email text := nullif(lower(btrim(coalesce(p_email, ''))), '');
   v_notes text := nullif(btrim(coalesce(p_notes, '')), '');
+  v_dcode text := nullif(upper(btrim(coalesce(p_discount_code, ''))), '');
+  v_code discount_codes%rowtype;
+  v_subtotal numeric(10,2);
+  v_discount numeric(10,2) := 0;
 begin
   -- Same checkout submitted twice → return the first order, do nothing new.
   select order_number, total into v_existing from orders where idempotency_key = p_idempotency_key;
@@ -254,6 +311,9 @@ begin
   if p_items is null or jsonb_typeof(p_items) <> 'array'
      or jsonb_array_length(p_items) = 0 or jsonb_array_length(p_items) > 50 then
     return jsonb_build_object('ok', false, 'error', 'empty_cart');
+  end if;
+  if v_dcode is not null and v_dcode !~ '^[A-Z0-9_-]{3,30}$' then
+    return jsonb_build_object('ok', false, 'error', 'invalid_discount');
   end if;
 
   v_order_id := gen_random_uuid();
@@ -303,16 +363,31 @@ begin
       'unit_price', v_price, 'quantity', v_qty, 'line_total', v_price * v_qty);
   end loop;
 
+  -- Discount code: re-checked here, inside the same transaction as the stock
+  -- reservation. The code row is locked, so two customers can never use the
+  -- last remaining use at the same time. Any failure rolls everything back.
+  v_subtotal := v_total;
+  if v_dcode is not null then
+    select * into v_code from discount_codes where code = v_dcode for update;
+    if not found or (v_code.max_uses is not null and v_code.used_count >= v_code.max_uses) then
+      raise exception using errcode = 'P0001', message = 'invalid_discount';
+    end if;
+    v_discount := discount_amount(v_code.kind, v_code.value, v_subtotal);
+    update discount_codes set used_count = used_count + 1 where id = v_code.id;
+    v_total := v_subtotal - v_discount;
+  end if;
+
   -- Unique, human-friendly order number, e.g. NF-261101-7K3Q
   loop
     v_number := 'NF-' || to_char(now() at time zone 'Europe/Amsterdam', 'YYMMDD') || '-' ||
-      upper(substr(translate(encode(gen_random_bytes(6), 'base64'), '+/=OI01l', ''), 1, 4));
+      upper(substr(translate(md5(gen_random_uuid()::text), 'OI01l', ''), 1, 4));
     exit when char_length(v_number) = 14 and not exists (select 1 from orders where order_number = v_number);
   end loop;
 
   insert into orders (id, order_number, idempotency_key, customer_name, phone, snapchat,
-                      email, customer_notes, total)
-  values (v_order_id, v_number, p_idempotency_key, v_name, v_phone, v_snap, v_email, v_notes, v_total);
+                      email, customer_notes, total, discount_code_id, discount_code, discount_amount)
+  values (v_order_id, v_number, p_idempotency_key, v_name, v_phone, v_snap, v_email, v_notes, v_total,
+          v_code.id, v_code.code, v_discount);
 
   insert into order_items (order_id, product_id, variant_id, product_name, brand_name, size,
                            condition, image_url, unit_price, quantity, line_total)
@@ -322,6 +397,7 @@ begin
     from jsonb_array_elements(v_lines) l;
 
   return jsonb_build_object('ok', true, 'order_number', v_number, 'total', v_total,
+                            'subtotal', v_subtotal, 'discount_amount', v_discount, 'discount_code', v_code.code,
                             'items', v_lines, 'duplicate', false);
 exception
   when raise_exception then
@@ -355,6 +431,8 @@ begin
     update product_variants v set stock = v.stock + oi.quantity
       from order_items oi where oi.order_id = p_order_id and oi.variant_id = v.id;
     update orders set stock_restored = true where id = p_order_id;
+    -- a cancelled order no longer counts as a use of its discount code
+    update discount_codes set used_count = greatest(used_count - 1, 0) where id = v_order.discount_code_id;
   elsif p_status <> 'cancelled' and v_order.stock_restored then
     select count(*) into v_short from order_items oi join product_variants v on v.id = oi.variant_id
      where oi.order_id = p_order_id and v.stock < oi.quantity;
@@ -364,6 +442,7 @@ begin
     update product_variants v set stock = v.stock - oi.quantity
       from order_items oi where oi.order_id = p_order_id and oi.variant_id = v.id;
     update orders set stock_restored = false where id = p_order_id;
+    update discount_codes set used_count = used_count + 1 where id = v_order.discount_code_id;
   end if;
 
   update orders set status = p_status, is_seen = true where id = p_order_id;
@@ -384,13 +463,14 @@ alter table public.orders           enable row level security;
 alter table public.order_items      enable row level security;
 alter table public.site_settings    enable row level security;
 alter table public.content_pages    enable row level security;
+alter table public.discount_codes   enable row level security;
 
 do $$
 declare t text;
 begin
   -- Admins may do everything on every table.
   foreach t in array array['brands','categories','products','product_images','product_variants',
-                           'orders','order_items','site_settings','content_pages'] loop
+                           'orders','order_items','site_settings','content_pages','discount_codes'] loop
     execute format('drop policy if exists "admin all" on public.%I', t);
     execute format('create policy "admin all" on public.%I for all to authenticated
                     using (public.is_admin()) with check (public.is_admin())', t);
@@ -418,11 +498,14 @@ drop policy if exists "public read settings" on public.site_settings;
 create policy "public read settings" on public.site_settings for select using (true);
 drop policy if exists "public read pages" on public.content_pages;
 create policy "public read pages" on public.content_pages for select using (true);
--- orders / order_items: NO public policies → customers can never read any order.
+-- orders / order_items / discount_codes: NO public policies → customers can never
+-- read any order and can never list discount codes (they can only try one).
 
 -- Function permissions
-revoke all on function public.place_order(uuid, text, text, text, text, text, jsonb) from public;
-grant execute on function public.place_order(uuid, text, text, text, text, text, jsonb) to anon, authenticated;
+revoke all on function public.place_order(uuid, text, text, text, text, text, jsonb, text) from public;
+grant execute on function public.place_order(uuid, text, text, text, text, text, jsonb, text) to anon, authenticated;
+revoke all on function public.check_discount_code(text, numeric) from public;
+grant execute on function public.check_discount_code(text, numeric) to anon, authenticated;
 revoke all on function public.set_order_status(uuid, order_status) from public, anon;
 grant execute on function public.set_order_status(uuid, order_status) to authenticated;
 

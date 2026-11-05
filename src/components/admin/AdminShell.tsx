@@ -15,6 +15,7 @@ const NAV = [
   { href: "/admin/prijzen", label: "Prijzen" },
   { href: "/admin/merken", label: "Merken beheren" },
   { href: "/admin/categorieen", label: "Categorieën" },
+  { href: "/admin/kortingscodes", label: "Kortingscodes" },
   { href: "/admin/klanten", label: "Klantgegevens" },
   { href: "/admin/instellingen", label: "Instellingen" },
 ];

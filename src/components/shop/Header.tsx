@@ -10,8 +10,7 @@ import { Logo } from "./Logo";
 interface NavBrand { name: string; slug: string }
 
 const NAV = [
-  { href: "/collectie", label: "Collectie" },
-  { href: "/collectie?nieuw=1", label: "Nieuw binnen" },
+  { href: "/zoeken?nieuw=1", label: "Nieuw binnen" },
   { href: "/merken", label: "Merken", dropdown: true },
   { href: "/over-ons", label: "Over NOIR FASHION" },
   { href: "/contact", label: "Contact" },
@@ -42,7 +41,7 @@ export function Header({ brands, announcement }: { brands: NavBrand[]; announcem
   const submitSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const q = new FormData(e.currentTarget).get("q")?.toString().trim();
-    router.push(q ? `/collectie?q=${encodeURIComponent(q)}` : "/collectie");
+    router.push(q ? `/zoeken?q=${encodeURIComponent(q)}` : "/merken");
     setSearchOpen(false);
   };
 
@@ -107,7 +106,7 @@ export function Header({ brands, announcement }: { brands: NavBrand[]; announcem
           <div className="border-t border-line bg-ivory">
             <form onSubmit={submitSearch} className="container-luxe flex items-center gap-4 py-5" role="search">
               <SearchIcon className="size-5 text-taupe" />
-              <label htmlFor="site-search" className="sr-only">Zoek in de collectie</label>
+              <label htmlFor="site-search" className="sr-only">Zoek in de webshop</label>
               <input ref={searchRef} id="site-search" name="q" type="search" placeholder="Zoek op product of merk…"
                 className="flex-1 bg-transparent py-2 font-serif text-2xl outline-none placeholder:text-taupe/60" />
               <button type="submit" className="btn btn-dark hidden sm:inline-flex">Zoeken</button>

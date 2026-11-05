@@ -66,7 +66,7 @@ export function TaxonomyManager({ kind, items }: { kind: "brand" | "category"; i
           <li key={item.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
             <div className="min-w-0 flex-1">
               <p className="font-medium">{item.name} {isBrand && item.is_active === false && <span className="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-[0.68rem] text-stone-600">Verborgen</span>}</p>
-              <p className="text-xs text-taupe">/{isBrand ? "merken" : "collectie?categorie="}{isBrand ? "/" : ""}{item.slug} · {item.count} {item.count === 1 ? "product" : "producten"}</p>
+              <p className="text-xs text-taupe">/{isBrand ? "merken" : "zoeken?categorie="}{isBrand ? "/" : ""}{item.slug} · {item.count} {item.count === 1 ? "product" : "producten"}</p>
             </div>
             <button type="button" onClick={() => { setEditing(item.id); setDraft(item); setMsg(null); }} className="a-btn a-btn-ghost min-h-9 px-3 text-xs">Bewerken</button>
             <button type="button" disabled={pending} onClick={() => remove(item)} className="a-btn a-btn-danger min-h-9 px-3 text-xs">Verwijderen</button>

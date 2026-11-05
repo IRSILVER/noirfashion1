@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatPrice } from "@/lib/format";
 
-interface LastOrder { orderNumber: string; total: number; name: string; items: { product_name: string; brand_name: string | null; size: string; quantity: number; line_total: number }[] }
+interface LastOrder { orderNumber: string; total: number; subtotal?: number; discountAmount?: number; discountCode?: string | null; name: string; items: { product_name: string; brand_name: string | null; size: string; quantity: number; line_total: number }[] }
 
 export function Confirmation() {
   const [order, setOrder] = useState<LastOrder | null>(null);
@@ -53,12 +53,18 @@ export function Confirmation() {
               </li>
             ))}
           </ul>
+          {!!order.discountAmount && order.discountAmount > 0 && (
+            <>
+              <p className="mt-4 flex justify-between text-sm"><span>Subtotaal</span><span>{formatPrice(order.subtotal ?? order.total + order.discountAmount)}</span></p>
+              <p className="mt-2 flex justify-between text-sm text-champagne"><span>Korting{order.discountCode ? ` (${order.discountCode})` : ""}</span><span>−{formatPrice(order.discountAmount)}</span></p>
+            </>
+          )}
           <p className="mt-4 flex justify-between text-base"><span>Totaal (excl. eventuele verzendkosten)</span><strong className="font-medium">{formatPrice(order.total)}</strong></p>
         </div>
       )}
 
       <div className="mt-14 flex flex-col justify-center gap-3 sm:flex-row">
-        <Link href="/collectie" className="btn btn-dark">Verder winkelen</Link>
+        <Link href="/merken" className="btn btn-dark">Verder winkelen</Link>
         <Link href="/contact" className="btn btn-outline">Contact</Link>
       </div>
     </div>

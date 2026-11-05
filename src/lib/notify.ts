@@ -16,6 +16,7 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&
  */
 export async function sendOrderNotification(order: {
   order_number: string; customer_name: string; total: number; created_at: string; items: Line[];
+  discount_code?: string | null; discount_amount?: number;
 }) {
   if (!emailNotificationsConfigured()) return { sent: false, reason: "not_configured" as const };
   const lines = order.items
@@ -25,6 +26,7 @@ export async function sendOrderNotification(order: {
     <h2 style="font-weight:400;letter-spacing:.08em">Nieuwe bestelling ${esc(order.order_number)}</h2>
     <p>Klant: <strong>${esc(order.customer_name)}</strong><br>Datum: ${formatDateTime(order.created_at)}</p>
     <table style="width:100%;border-collapse:collapse;border-top:1px solid #e4d3be;border-bottom:1px solid #e4d3be">${lines}</table>
+    ${order.discount_code && order.discount_amount ? `<p>Kortingscode <strong>${esc(order.discount_code)}</strong>: −${formatPrice(order.discount_amount)}</p>` : ""}
     <p style="font-size:18px">Totaal: <strong>${formatPrice(order.total)}</strong></p>
     <p><a href="${SITE_URL}/admin/bestellingen" style="color:#8a6a3f">Open de bestelling in het dashboard</a> voor de contactgegevens.</p>
   </div>`;

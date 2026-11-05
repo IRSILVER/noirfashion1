@@ -4,7 +4,7 @@ import type { SiteSettings } from "@/lib/types";
 import { whatsappNumber } from "@/lib/format";
 
 const COLS = [
-  { title: "Shop", links: [["/collectie", "Collectie"], ["/collectie?nieuw=1", "Nieuw binnen"], ["/merken", "Merken"], ["/maattabel", "Maattabel"]] },
+  { title: "Shop", links: [["/zoeken?nieuw=1", "Nieuw binnen"], ["/merken", "Merken"], ["/maattabel", "Maattabel"]] },
   { title: "Service", links: [["/contact", "Contact"], ["/veelgestelde-vragen", "Veelgestelde vragen"], ["/verzending", "Verzending & afhalen"], ["/retourneren", "Retourneren"], ["/authenticiteit", "Authenticiteit"]] },
   { title: "Informatie", links: [["/over-ons", "Over NOIR FASHION"], ["/privacy", "Privacybeleid"], ["/algemene-voorwaarden", "Algemene voorwaarden"]] },
 ];

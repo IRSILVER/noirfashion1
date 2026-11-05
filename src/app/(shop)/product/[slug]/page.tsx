@@ -64,7 +64,7 @@ export default async function ProductPage({ params }: Props) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <div className="container-luxe py-8 md:py-14">
         <nav aria-label="Kruimelpad" className="mb-8 text-[0.62rem] uppercase tracking-[0.24em] text-taupe">
-          <Link href="/collectie" className="hover:text-espresso">Collectie</Link>
+          <Link href="/merken" className="hover:text-espresso">Merken</Link>
           {product.brand && (<><span className="mx-2">/</span><Link href={`/merken/${product.brand.slug}`} className="hover:text-espresso">{product.brand.name}</Link></>)}
           <span className="mx-2">/</span><span className="text-espresso">{product.name}</span>
         </nav>

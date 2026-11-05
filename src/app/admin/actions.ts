@@ -322,6 +322,52 @@ export async function deleteCategory(id: string): Promise<Result> {
   return { ok: true };
 }
 
+// ================================================================ discount codes
+
+export interface DiscountPayload {
+  id?: string;
+  code: string;
+  kind: "percent" | "fixed";
+  value: string | number;
+  /** Empty = unlimited */
+  max_uses: string | number | null;
+}
+
+/** Creates or updates a discount code. The owner chooses the name, amount and maximum number of uses. */
+export async function saveDiscountCode(d: DiscountPayload): Promise<Result> {
+  const { supabase } = await requireAdmin();
+  const code = String(d.code ?? "").trim().toUpperCase();
+  if (!/^[A-Z0-9_-]{3,30}$/.test(code)) return { ok: false, error: "Een kortingscode bestaat uit 3 tot 30 letters, cijfers, - of _ (zonder spaties). Bijvoorbeeld NOIR10." };
+  if (d.kind !== "percent" && d.kind !== "fixed") return { ok: false, error: "Kies percentage of vast bedrag." };
+  const value = money(d.value, true);
+  if (value === "invalid" || value === null || value <= 0) return { ok: false, error: d.kind === "percent" ? "Vul een kortingspercentage in (bijvoorbeeld 10)." : "Vul een kortingsbedrag in euro's in (bijvoorbeeld 15)." };
+  if (d.kind === "percent" && value > 100) return { ok: false, error: "Een percentage kan niet hoger zijn dan 100." };
+
+  let maxUses: number | null = null;
+  if (d.max_uses !== null && String(d.max_uses).trim() !== "") {
+    const n = Number(String(d.max_uses).trim());
+    if (!Number.isInteger(n) || n < 1 || n > 1_000_000) return { ok: false, error: "Het maximaal aantal keer gebruiken moet een heel getal van 1 of hoger zijn (of laat het leeg voor onbeperkt)." };
+    maxUses = n;
+  }
+
+  const row = { code, kind: d.kind, value, max_uses: maxUses };
+  const { error } = d.id
+    ? await supabase.from("discount_codes").update(row).eq("id", d.id)
+    : await supabase.from("discount_codes").insert(row);
+  if (error) return { ok: false, error: error.code === "23505" ? `De code ${code} bestaat al.` : error.message };
+  revalidatePath("/admin/kortingscodes");
+  return { ok: true };
+}
+
+/** Deletes a code. Past orders keep the code name and the discount they received. */
+export async function deleteDiscountCode(id: string): Promise<Result> {
+  const { supabase } = await requireAdmin();
+  const { error } = await supabase.from("discount_codes").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/kortingscodes");
+  return { ok: true };
+}
+
 // =================================================================== orders
 
 export async function setOrderStatus(id: string, status: OrderStatus): Promise<Result> {

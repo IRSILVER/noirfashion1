@@ -9,7 +9,7 @@ export default function NotFound() {
       <h1 className="heading-display mt-4 text-4xl md:text-5xl">Deze pagina bestaat niet</h1>
       <p className="mt-5 max-w-sm text-sm text-brown">Misschien is het item inmiddels verkocht of is de link veranderd.</p>
       <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-        <Link href="/collectie" className="btn btn-dark">Naar de collectie</Link>
+        <Link href="/merken" className="btn btn-dark">Bekijk de merken</Link>
         <Link href="/" className="btn btn-outline">Naar home</Link>
       </div>
     </div>

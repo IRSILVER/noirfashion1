@@ -18,7 +18,7 @@ export function CartView() {
       <div className="border border-line bg-cream/40 px-6 py-20 text-center">
         <p className="heading-display text-3xl">Je winkelwagen is leeg</p>
         <p className="mt-4 text-sm text-brown">Ontdek onze zorgvuldig geselecteerde stukken.</p>
-        <Link href="/collectie" className="btn btn-dark mt-10">Verder winkelen</Link>
+        <Link href="/merken" className="btn btn-dark mt-10">Verder winkelen</Link>
       </div>
     );
   }
@@ -54,7 +54,7 @@ export function CartView() {
             </li>
           ))}
         </ul>
-        <Link href="/collectie" className="link-underline mt-8 inline-block text-[0.68rem] uppercase tracking-[0.24em]">← Verder winkelen</Link>
+        <Link href="/merken" className="link-underline mt-8 inline-block text-[0.68rem] uppercase tracking-[0.24em]">← Verder winkelen</Link>
       </div>
 
       <aside className="h-fit bg-cream/70 p-7 lg:sticky lg:top-32">
