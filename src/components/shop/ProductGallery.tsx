@@ -1,12 +1,18 @@
 "use client";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
+import { imagesForColor } from "@/lib/pricing";
 import type { ProductImage } from "@/lib/types";
+import { useColor } from "./ColorContext";
 import { ArrowIcon, CloseIcon, ZoomIcon } from "../icons";
 import { ImagePlaceholder } from "./ImagePlaceholder";
 
-export function ProductGallery({ images, name }: { images: ProductImage[]; name: string }) {
+export function ProductGallery({ images: allImages, name }: { images: ProductImage[]; name: string }) {
+  const { color } = useColor();
+  const images = imagesForColor(allImages, color);
   const [active, setActive] = useState(0);
+  // Show the first photo again whenever another colour is chosen.
+  useEffect(() => setActive(0), [color]);
   const [lightbox, setLightbox] = useState(false);
   const [origin, setOrigin] = useState<string | null>(null);
 
@@ -28,7 +34,7 @@ export function ProductGallery({ images, name }: { images: ProductImage[]; name:
     return <div className="relative aspect-[4/5] w-full bg-cream"><ImagePlaceholder label="Productfoto's volgen" /></div>;
   }
 
-  const current = images[active];
+  const current = images[Math.min(active, images.length - 1)];
 
   return (
     <div className="flex flex-col-reverse gap-4 md:flex-row">

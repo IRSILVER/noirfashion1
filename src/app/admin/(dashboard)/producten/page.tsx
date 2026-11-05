@@ -5,7 +5,7 @@ import { Empty, PageHeader } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/auth";
 import { PRODUCT_SELECT, normalizeProduct } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
-import { priceRange, totalStock } from "@/lib/pricing";
+import { priceRange, productColors, totalStock } from "@/lib/pricing";
 
 export const metadata = { title: "Producten beheren" };
 
@@ -59,7 +59,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                     <p className="truncate font-medium">{p.name}</p>
                     <p className="mt-0.5 text-xs text-taupe">
                       {varies && "vanaf "}{formatPrice(price)}{compareAt && <span className="ml-1 line-through">{formatPrice(compareAt)}</span>}
-                      {" · "}voorraad {stock}{" · "}{p.variants.map((v) => v.size).join(", ") || "geen maten"}
+                      {" · "}voorraad {stock}{" · "}{(productColors(p).length ? [`${productColors(p).length} kleuren`] : []).concat(p.variants.map((v) => v.size).filter((s, i, a) => a.indexOf(s) === i)).join(", ") || "geen maten"}
                     </p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       <Tag tone={p.is_published ? "green" : "grey"}>{p.is_published ? "Online" : "Verborgen"}</Tag>

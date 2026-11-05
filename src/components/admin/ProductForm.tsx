@@ -8,8 +8,8 @@ import { removeUploadedImage, uploadImage } from "@/lib/upload";
 import type { Product, ProductCondition } from "@/lib/types";
 
 type Opt = { id: string; name: string; slug?: string };
-type ImgRow = { id?: string; url: string; storage_path: string | null; alt: string; isNew?: boolean };
-type VarRow = { key: string; id?: string; size: string; stock: string; price: string; sale_price: string };
+type ImgRow = { id?: string; url: string; storage_path: string | null; alt: string; color: string; isNew?: boolean };
+type VarRow = { key: string; id?: string; color: string; size: string; stock: string; price: string; sale_price: string };
 
 const QUICK_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "One size"];
 const toInput = (n: number | null | undefined) => (n == null ? "" : String(n).replace(".", ","));
@@ -41,10 +41,11 @@ export function ProductForm({ product, brands: initialBrands, categories }: { pr
     is_sold_out: product?.is_sold_out ?? false,
   });
   const [variants, setVariants] = useState<VarRow[]>(
-    product?.variants.map((v) => ({ key: newKey(), id: v.id, size: v.size, stock: String(v.stock), price: toInput(v.price), sale_price: toInput(v.sale_price) }))
-      ?? [{ key: newKey(), size: "", stock: "1", price: "", sale_price: "" }],
+    product?.variants.map((v) => ({ key: newKey(), id: v.id, color: v.color ?? "", size: v.size, stock: String(v.stock), price: toInput(v.price), sale_price: toInput(v.sale_price) }))
+      ?? [{ key: newKey(), color: "", size: "", stock: "1", price: "", sale_price: "" }],
   );
-  const [images, setImages] = useState<ImgRow[]>(product?.images.map((i) => ({ id: i.id, url: i.url, storage_path: i.storage_path, alt: i.alt ?? "" })) ?? []);
+  const [images, setImages] = useState<ImgRow[]>(product?.images.map((i) => ({ id: i.id, url: i.url, storage_path: i.storage_path, alt: i.alt ?? "", color: i.color ?? "" })) ?? []);
+  const [newColor, setNewColor] = useState<string | null>(null);
   const [showSizePrices, setShowSizePrices] = useState(product?.variants.some((v) => v.price != null || v.sale_price != null) ?? false);
 
   useEffect(() => {
@@ -66,7 +67,7 @@ export function ProductForm({ product, brands: initialBrands, categories }: { pr
       try {
         if (file.size > 25 * 1024 * 1024) throw new Error(`${file.name} is groter dan 25 MB.`);
         const { url, path } = await uploadImage(file, "products");
-        setImages((imgs) => [...imgs, { url, storage_path: path, alt: "", isNew: true }]);
+        setImages((imgs) => [...imgs, { url, storage_path: path, alt: "", color: "", isNew: true }]);
         setDirty(true);
       } catch (e) {
         setMessage({ ok: false, text: e instanceof Error ? e.message : "Uploaden mislukt." });
@@ -113,8 +114,8 @@ export function ProductForm({ product, brands: initialBrands, categories }: { pr
     if (uploading > 0) { setMessage({ ok: false, text: "Wacht tot alle foto's zijn geüpload." }); return; }
     const payload: ProductPayload = {
       id: product?.id, ...f, brand_id: f.brand_id || null, category_id: f.category_id || null,
-      variants: variants.map((v) => ({ id: v.id, size: v.size, stock: v.stock, price: showSizePrices ? v.price : "", sale_price: showSizePrices ? v.sale_price : "" })),
-      images: images.map((i) => ({ id: i.id, url: i.url, storage_path: i.storage_path, alt: i.alt })),
+      variants: variants.map((v) => ({ id: v.id, color: v.color, size: v.size, stock: v.stock, price: showSizePrices ? v.price : "", sale_price: showSizePrices ? v.sale_price : "" })),
+      images: images.map((i) => ({ id: i.id, url: i.url, storage_path: i.storage_path, alt: i.alt, color: i.color })),
     };
     start(async () => {
       const res = await saveProduct(payload);
@@ -126,7 +127,24 @@ export function ProductForm({ product, brands: initialBrands, categories }: { pr
     });
   };
 
-  const sizes = new Set(variants.map((v) => v.size.trim().toLowerCase()));
+  const colors = variants.map((v) => v.color.trim()).filter((c, i, a) => c && a.findIndex((x) => x.toLowerCase() === c.toLowerCase()) === i);
+  const hasColors = colors.length > 0;
+  const lastColor = variants.length ? variants[variants.length - 1].color : "";
+  const sizes = new Set(variants.filter((v) => v.color.trim().toLowerCase() === lastColor.trim().toLowerCase()).map((v) => v.size.trim().toLowerCase()));
+  // Adds a new colour with the same sizes as the colour before it.
+  const addColor = () => {
+    const name = (newColor ?? "").trim();
+    if (!name) return;
+    if (!hasColors) {
+      // First colour: the sizes already entered belong to this colour.
+      setVariants((vs) => vs.map((v) => ({ ...v, color: name })));
+    } else {
+      const base = variants.filter((v) => v.color.trim().toLowerCase() === colors[colors.length - 1].toLowerCase());
+      const rows = base.map((v) => ({ key: newKey(), color: name, size: v.size, stock: "1", price: v.price, sale_price: v.sale_price }));
+      setVariants((vs) => [...vs, ...rows]);
+    }
+    setNewColor(null); setDirty(true);
+  };
   const totalStock = variants.reduce((s, v) => s + (parseInt(v.stock) || 0), 0);
 
   return (
@@ -198,7 +216,7 @@ export function ProductForm({ product, brands: initialBrands, categories }: { pr
           </Card>
 
           {/* FOTO'S */}
-          <Card title="Foto's" hint="De eerste foto is de hoofdfoto. Foto's worden automatisch geoptimaliseerd. Gebruik bij voorkeur staande foto's (verhouding 4:5).">
+          <Card title="Foto's" hint="De eerste foto is de hoofdfoto. Heeft het product kleuren? Kies dan per foto bij welke kleur hij hoort. Foto's worden automatisch geoptimaliseerd. Gebruik bij voorkeur staande foto's (verhouding 4:5).">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {images.map((img, i) => (
                 <div key={img.url} className="group relative">
@@ -211,6 +229,13 @@ export function ProductForm({ product, brands: initialBrands, categories }: { pr
                     <button type="button" onClick={() => moveImage(i, 1)} disabled={i === images.length - 1} className="a-btn a-btn-ghost min-h-8 flex-1 px-0 text-xs" aria-label="Naar rechts">→</button>
                     <button type="button" onClick={() => removeImage(i)} className="a-btn a-btn-danger min-h-8 flex-1 px-0 text-xs" aria-label="Foto verwijderen">✕</button>
                   </div>
+                  {hasColors && (
+                    <select value={img.color} onChange={(e) => { const color = e.target.value; setImages((imgs) => imgs.map((x, j) => (j === i ? { ...x, color } : x))); setDirty(true); }}
+                      className="a-input mt-1.5 py-1.5 text-xs" aria-label="Kleur van deze foto">
+                      <option value="">Alle kleuren</option>
+                      {colors.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  )}
                   <input value={img.alt} onChange={(e) => { const alt = e.target.value; setImages((imgs) => imgs.map((x, j) => (j === i ? { ...x, alt } : x))); setDirty(true); }}
                     className="a-input mt-1.5 py-1.5 text-xs" placeholder="Omschrijving (optioneel)" />
                 </div>
@@ -226,20 +251,21 @@ export function ProductForm({ product, brands: initialBrands, categories }: { pr
           </Card>
 
           {/* MATEN & VOORRAAD */}
-          <Card title="Maten & voorraad" hint="Voeg elke beschikbare maat toe met de voorraad. Zet de voorraad op 0 als een maat tijdelijk op is.">
+          <Card title="Kleuren, maten & voorraad" hint="Heeft het product maar één kleur? Laat het kleurveld leeg. Meerdere kleuren? Vul bij elke regel de kleur in, of gebruik ‘+ Kleur toevoegen’. Zet de voorraad op 0 als iets tijdelijk op is.">
             <div className="mb-4 flex flex-wrap gap-1.5">
               {QUICK_SIZES.map((s) => (
                 <button key={s} type="button" disabled={sizes.has(s.toLowerCase())}
-                  onClick={() => { setVariants((vs) => [...vs.filter((v) => v.size.trim() || v.id), { key: newKey(), size: s, stock: "1", price: "", sale_price: "" }]); setDirty(true); }}
+                  onClick={() => { setVariants((vs) => [...vs.filter((v) => v.size.trim() || v.id), { key: newKey(), color: lastColor, size: s, stock: "1", price: "", sale_price: "" }]); setDirty(true); }}
                   className="a-btn a-btn-ghost min-h-8 px-2.5 text-xs">+ {s}</button>
               ))}
             </div>
             <div className="space-y-2">
-              <div className={`hidden gap-2 text-[0.68rem] font-medium uppercase tracking-[0.06em] text-taupe sm:grid ${showSizePrices ? "sm:grid-cols-[1fr_90px_110px_110px_40px]" : "sm:grid-cols-[1fr_110px_40px]"}`}>
-                <span>Maat</span><span>Voorraad</span>{showSizePrices && <><span>Prijs maat</span><span>Actie maat</span></>}<span />
+              <div className={`hidden gap-2 text-[0.68rem] font-medium uppercase tracking-[0.06em] text-taupe sm:grid ${showSizePrices ? "sm:grid-cols-[1fr_1fr_90px_110px_110px_40px]" : "sm:grid-cols-[1fr_1fr_110px_40px]"}`}>
+                <span>Kleur</span><span>Maat</span><span>Voorraad</span>{showSizePrices && <><span>Prijs maat</span><span>Actie maat</span></>}<span />
               </div>
               {variants.map((v) => (
-                <div key={v.key} className={`grid grid-cols-[1fr_90px_40px] gap-2 ${showSizePrices ? "sm:grid-cols-[1fr_90px_110px_110px_40px]" : "sm:grid-cols-[1fr_110px_40px]"}`}>
+                <div key={v.key} className={`grid grid-cols-[1fr_1fr_90px_40px] gap-2 ${showSizePrices ? "sm:grid-cols-[1fr_1fr_90px_110px_110px_40px]" : "sm:grid-cols-[1fr_1fr_110px_40px]"}`}>
+                  <input value={v.color} onChange={(e) => updVar(v.key, { color: e.target.value })} list="kleuren-lijst" className="a-input" placeholder="Kleur (optioneel)" aria-label="Kleur" maxLength={40} />
                   <input value={v.size} onChange={(e) => updVar(v.key, { size: e.target.value })} className="a-input" placeholder="Maat (bijv. M, 42)" aria-label="Maat" maxLength={30} />
                   <input value={v.stock} onChange={(e) => updVar(v.key, { stock: e.target.value.replace(/[^\d]/g, "") })} inputMode="numeric" className="a-input" aria-label="Voorraad" />
                   {showSizePrices && (
@@ -253,8 +279,20 @@ export function ProductForm({ product, brands: initialBrands, categories }: { pr
                 </div>
               ))}
             </div>
+            <datalist id="kleuren-lijst">{colors.map((c) => <option key={c} value={c} />)}</datalist>
+            {newColor !== null && (
+              <div className="mt-3 flex gap-2">
+                <input autoFocus value={newColor} onChange={(e) => setNewColor(e.target.value)} className="a-input" placeholder={hasColors ? "Naam van de nieuwe kleur, bijv. Zwart" : "Kleur van dit product, bijv. Zwart"} maxLength={40}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addColor(); } }} />
+                <button type="button" onClick={addColor} className="a-btn a-btn-dark shrink-0">Toevoegen</button>
+                <button type="button" onClick={() => setNewColor(null)} className="a-btn a-btn-ghost shrink-0">×</button>
+              </div>
+            )}
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <button type="button" onClick={() => { setVariants((vs) => [...vs, { key: newKey(), size: "", stock: "1", price: "", sale_price: "" }]); setDirty(true); }} className="a-btn a-btn-ghost">+ Maat toevoegen</button>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => { setVariants((vs) => [...vs, { key: newKey(), color: lastColor, size: "", stock: "1", price: "", sale_price: "" }]); setDirty(true); }} className="a-btn a-btn-ghost">+ Maat toevoegen</button>
+                <button type="button" onClick={() => setNewColor("")} className="a-btn a-btn-ghost">+ Kleur toevoegen</button>
+              </div>
               <span className="text-sm text-taupe">Totale voorraad: <strong className="text-espresso">{totalStock}</strong></span>
             </div>
             <label className="mt-4 flex items-start gap-2 text-sm">

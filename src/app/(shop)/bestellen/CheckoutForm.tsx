@@ -131,10 +131,11 @@ export function CheckoutForm() {
           <Field id="name" label="Volledige naam" required error={errors.name}>
             <input id="f-name" autoComplete="name" value={values.name} onChange={set("name")} className="field" aria-invalid={!!errors.name} aria-describedby={errors.name ? "e-name" : undefined} required maxLength={100} />
           </Field>
-          <Field id="phone" label="Telefoonnummer" required error={errors.phone} hint="Hierop nemen wij contact met je op.">
-            <input id="f-phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="06 12345678" value={values.phone} onChange={set("phone")} className="field" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "e-phone" : "h-phone"} required maxLength={20} />
+          <p className="-mt-2 text-sm leading-relaxed text-brown">Hoe kunnen wij je bereiken? Vul <strong className="font-medium text-espresso">je telefoonnummer óf je Snapchat</strong> in. Eén van de twee is genoeg.</p>
+          <Field id="phone" label="Telefoonnummer" badge="Telefoon of Snapchat" error={errors.phone} hint="Hierop nemen wij contact met je op.">
+            <input id="f-phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="06 12345678" value={values.phone} onChange={set("phone")} className="field" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "e-phone" : "h-phone"} maxLength={20} />
           </Field>
-          <Field id="snapchat" label="Snapchat-gebruikersnaam" error={errors.snapchat} hint="Optioneel — je kunt ook zonder Snapchat bestellen.">
+          <Field id="snapchat" label="Snapchat-gebruikersnaam" badge="Telefoon of Snapchat" error={errors.snapchat} hint="Heb je geen Snapchat? Dan is je telefoonnummer genoeg.">
             <input id="f-snapchat" autoComplete="off" autoCapitalize="none" placeholder="gebruikersnaam" value={values.snapchat} onChange={set("snapchat")} className="field" aria-invalid={!!errors.snapchat} aria-describedby={errors.snapchat ? "e-snapchat" : "h-snapchat"} maxLength={31} />
           </Field>
           <Field id="email" label="E-mailadres" error={errors.email}>
@@ -211,14 +212,14 @@ export function CheckoutForm() {
   );
 }
 
-function Field({ id, label, required = false, error, hint, children }: {
-  id: string; label: string; required?: boolean; error?: string; hint?: string; children: React.ReactNode;
+function Field({ id, label, required = false, badge, error, hint, children }: {
+  id: string; label: string; required?: boolean; badge?: string; error?: string; hint?: string; children: React.ReactNode;
 }) {
   return (
     <div>
       <label htmlFor={`f-${id}`} className="field-label">
         <span>{label}</span>
-        <span className={required ? "text-espresso" : "text-taupe"}>{required ? "Verplicht" : "Optioneel"}</span>
+        <span className={required || badge ? "text-espresso" : "text-taupe"}>{badge ?? (required ? "Verplicht" : "Optioneel")}</span>
       </label>
       {children}
       {error ? <p id={`e-${id}`} className="mt-2 text-xs text-[#8b3a2a]">{error}</p>

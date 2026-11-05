@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { CONDITION_LABELS } from "@/lib/format";
-import { isAvailable, priceRange } from "@/lib/pricing";
+import { isAvailable, priceRange, productColors } from "@/lib/pricing";
 import type { Product } from "@/lib/types";
 import { ImagePlaceholder } from "./ImagePlaceholder";
 import { Price } from "./Price";
@@ -10,7 +10,8 @@ export function ProductCard({ product, priority = false }: { product: Product; p
   const [first, second] = product.images;
   const available = isAvailable(product);
   const { price, compareAt, varies } = priceRange(product);
-  const sizes = product.variants.filter((v) => v.stock > 0).map((v) => v.size);
+  const sizes = product.variants.filter((v) => v.stock > 0).map((v) => v.size).filter((s, i, a) => a.indexOf(s) === i);
+  const colorCount = productColors(product).length;
 
   return (
     <Link href={`/product/${product.slug}`} className="group block">
@@ -35,7 +36,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
       <div className="mt-4 space-y-1.5">
         {product.brand && <p className="text-[0.62rem] uppercase tracking-[0.28em] text-champagne">{product.brand.name}</p>}
         <h3 className="font-serif text-lg leading-snug text-espresso transition-colors group-hover:text-brown">{product.name}</h3>
-        <p className="text-[0.72rem] text-taupe">{CONDITION_LABELS[product.condition]}{sizes.length > 0 && ` · ${sizes.join(", ")}`}</p>
+        <p className="text-[0.72rem] text-taupe">{CONDITION_LABELS[product.condition]}{colorCount > 1 && ` · ${colorCount} kleuren`}{sizes.length > 0 && ` · ${sizes.join(", ")}`}</p>
         <Price price={price} compareAt={compareAt} from={varies} className="pt-1 text-[0.95rem]" />
       </div>
     </Link>

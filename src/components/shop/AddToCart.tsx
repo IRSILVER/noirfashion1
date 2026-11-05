@@ -1,23 +1,28 @@
 "use client";
 import { useMemo, useState } from "react";
-import { resolvePrice } from "@/lib/pricing";
+import { colorInStock, imagesForColor, productColors, resolvePrice, variantLabel } from "@/lib/pricing";
 import type { Product } from "@/lib/types";
 import { CheckIcon } from "../icons";
+import { useColor } from "./ColorContext";
 import { useCart } from "./CartProvider";
 import { Price } from "./Price";
 import { QuantityStepper } from "./QuantityStepper";
 
 export function AddToCart({ product }: { product: Product }) {
   const { add, items, setDrawerOpen } = useCart();
-  const firstInStock = product.variants.find((v) => v.stock > 0);
+  const { color, setColor } = useColor();
+  const colors = productColors(product);
+  // Only the sizes of the chosen colour are shown (products without colours show all sizes).
+  const sizeList = colors.length ? product.variants.filter((v) => v.color === color) : product.variants;
+  const firstInStock = sizeList.find((v) => v.stock > 0) ?? product.variants.find((v) => v.stock > 0);
   const [variantId, setVariantId] = useState<string | null>(
-    product.variants.length === 1 && firstInStock ? firstInStock.id : null,
+    sizeList.length === 1 && sizeList[0].stock > 0 ? sizeList[0].id : null,
   );
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const variant = product.variants.find((v) => v.id === variantId) ?? null;
+  const variant = sizeList.find((v) => v.id === variantId) ?? null;
   const inCart = items.find((i) => i.variantId === variantId)?.quantity ?? 0;
   const maxAddable = variant ? Math.max(0, variant.stock - inCart) : 0;
   const soldOut = product.is_sold_out || !firstInStock;
@@ -29,8 +34,8 @@ export function AddToCart({ product }: { product: Product }) {
     const p = resolvePrice(product, variant);
     add({
       variantId: variant.id, productId: product.id, slug: product.slug, name: product.name,
-      brand: product.brand?.name ?? null, size: variant.size, price: p.price, compareAt: p.compareAt,
-      image: product.images[0]?.url ?? null, quantity: Math.min(qty, maxAddable), maxStock: variant.stock,
+      brand: product.brand?.name ?? null, size: variantLabel(variant), price: p.price, compareAt: p.compareAt,
+      image: imagesForColor(product.images, variant.color)[0]?.url ?? null, quantity: Math.min(qty, maxAddable), maxStock: variant.stock,
     });
     setError(null); setAdded(true); setQty(1);
     setTimeout(() => setAdded(false), 2200);
@@ -41,15 +46,40 @@ export function AddToCart({ product }: { product: Product }) {
     <div className="space-y-8">
       <Price price={shown.price} compareAt={shown.compareAt} className="text-2xl" />
 
+      {colors.length > 0 && (
+        <fieldset>
+          <legend className="field-label mb-4 w-full">
+            <span>Kleur{color && <span className="ml-2 normal-case tracking-normal text-taupe">— {color}</span>}</span>
+          </legend>
+          <div className="flex flex-wrap gap-2">
+            {colors.map((c) => {
+              const out = !colorInStock(product, c);
+              const selected = c === color;
+              return (
+                <button key={c} type="button" aria-pressed={selected}
+                  onClick={() => {
+                    setColor(c); setError(null); setQty(1);
+                    const list = product.variants.filter((v) => v.color === c);
+                    setVariantId(list.length === 1 && list[0].stock > 0 ? list[0].id : null);
+                  }}
+                  className={`min-w-14 border px-4 py-3 text-sm transition-all ${selected ? "border-noir bg-noir text-ivory" : "border-line hover:border-espresso"} ${out ? "text-taupe/60 line-through" : ""}`}>
+                  {c}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+      )}
+
       <fieldset>
         <legend className="field-label mb-4 w-full">
           <span>Maat{variant && <span className="ml-2 normal-case tracking-normal text-taupe">— {variant.size}</span>}</span>
         </legend>
-        {product.variants.length === 0 ? (
+        {sizeList.length === 0 ? (
           <p className="text-sm text-taupe">Er zijn nog geen maten beschikbaar.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {product.variants.map((v) => {
+            {sizeList.map((v) => {
               const out = v.stock <= 0 || product.is_sold_out;
               const selected = v.id === variantId;
               return (

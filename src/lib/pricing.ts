@@ -1,4 +1,4 @@
-import type { Product, ProductVariant } from "./types";
+import type { Product, ProductImage, ProductVariant } from "./types";
 
 /**
  * Resolves the selling price exactly like the database function
@@ -39,3 +39,29 @@ export function priceRange(product: Product) {
   const varies = prices.some((p) => p.price !== min.price);
   return { ...min, varies };
 }
+
+// ---------------------------------------------------------------- colours
+
+/** Distinct colours of a product, in the order the admin entered them. */
+export function productColors(product: Pick<Product, "variants">): string[] {
+  const out: string[] = [];
+  for (const v of product.variants) if (v.color && !out.includes(v.color)) out.push(v.color);
+  return out;
+}
+
+/** True when at least one size of this colour is in stock. */
+export function colorInStock(product: Pick<Product, "variants" | "is_sold_out">, color: string) {
+  return !product.is_sold_out && product.variants.some((v) => v.color === color && v.stock > 0);
+}
+
+/** Photos to show for a colour: that colour's own photos first, then the shared ones. */
+export function imagesForColor(images: ProductImage[], color: string | null): ProductImage[] {
+  if (!color) return images;
+  const own = images.filter((i) => i.color === color);
+  const shared = images.filter((i) => !i.color);
+  const list = [...own, ...shared];
+  return list.length ? list : images;
+}
+
+/** "Zwart · M" for products with colours, "M" for products without. Stored in carts and orders. */
+export const variantLabel = (v: { size: string; color?: string | null }) => (v.color ? `${v.color} · ${v.size}` : v.size);

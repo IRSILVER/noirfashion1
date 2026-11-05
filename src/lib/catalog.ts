@@ -8,8 +8,8 @@ export const PRODUCT_SELECT = `
   is_published, is_featured, is_new_arrival, is_sold_out, created_at, updated_at,
   brand:brands(id, name, slug),
   category:categories(id, name, slug),
-  images:product_images(id, product_id, url, storage_path, alt, sort_order),
-  variants:product_variants(id, product_id, size, stock, price, sale_price, sort_order)
+  images:product_images(id, product_id, url, storage_path, alt, color, sort_order),
+  variants:product_variants(id, product_id, size, color, stock, price, sale_price, sort_order)
 `;
 
 const SIZE_ORDER = ["XXXS", "XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "ONE SIZE"];

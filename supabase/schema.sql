@@ -103,10 +103,17 @@ create table if not exists public.product_variants (
   price      numeric(10,2) check (price is null or price >= 0),
   sale_price numeric(10,2) check (sale_price is null or sale_price >= 0),
   sort_order int not null default 0,
-  created_at timestamptz not null default now(),
-  unique (product_id, size)
+  created_at timestamptz not null default now()
 );
 create index if not exists product_variants_product_idx on public.product_variants(product_id, sort_order);
+
+-- Colours: one product can have several colours, each with its own sizes + stock.
+-- color = NULL means the product has no colour choice (works exactly as before).
+alter table public.product_variants add column if not exists color text;
+alter table public.product_images   add column if not exists color text;   -- NULL = photo shown for every colour
+alter table public.product_variants drop constraint if exists product_variants_product_id_size_key;
+create unique index if not exists product_variants_unique_idx
+  on public.product_variants (product_id, coalesce(color, ''), size);
 
 -- The one place where a selling price is resolved. Mirrors src/lib/pricing.ts.
 -- Uses ONLY prices entered by the admin; nothing is calculated or invented.
@@ -127,7 +134,7 @@ create table if not exists public.orders (
   order_number    text not null unique,
   idempotency_key uuid not null unique,
   customer_name   text not null,
-  phone           text not null,
+  phone           text,            -- phone OR snapchat is required (checked in place_order)
   snapchat        text,
   email           text,
   customer_notes  text,
@@ -274,7 +281,7 @@ declare
   v_lines jsonb := '[]'::jsonb;
   v_detail text;
   v_name text := btrim(coalesce(p_name, ''));
-  v_phone text := regexp_replace(coalesce(p_phone, ''), '[\s\-\.\(\)]', '', 'g');
+  v_phone text := nullif(regexp_replace(coalesce(p_phone, ''), '[\s\-\.\(\)]', '', 'g'), '');
   v_snap text := nullif(btrim(coalesce(p_snapchat, '')), '');
   v_email text := nullif(lower(btrim(coalesce(p_email, ''))), '');
   v_notes text := nullif(btrim(coalesce(p_notes, '')), '');
@@ -293,7 +300,7 @@ begin
   if char_length(v_name) < 2 or char_length(v_name) > 100 then
     return jsonb_build_object('ok', false, 'error', 'invalid_name');
   end if;
-  if v_phone !~ '^(\+|00)?[0-9]{8,15}$' then
+  if v_phone is not null and v_phone !~ '^(\+|00)?[0-9]{8,15}$' then
     return jsonb_build_object('ok', false, 'error', 'invalid_phone');
   end if;
   if v_snap is not null then
@@ -301,6 +308,10 @@ begin
     if v_snap !~ '^[A-Za-z][A-Za-z0-9._-]{1,29}$' then
       return jsonb_build_object('ok', false, 'error', 'invalid_snapchat');
     end if;
+  end if;
+  -- The customer must give a way to reach them: phone OR Snapchat (one is enough).
+  if v_phone is null and v_snap is null then
+    return jsonb_build_object('ok', false, 'error', 'contact_required');
   end if;
   if v_email is not null and (char_length(v_email) > 254 or v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$') then
     return jsonb_build_object('ok', false, 'error', 'invalid_email');
@@ -331,11 +342,11 @@ begin
       return jsonb_build_object('ok', false, 'error', 'invalid_quantity');
     end if;
 
-    select v.id as variant_id, v.size, v.stock, v.price as v_price, v.sale_price as v_sale,
+    select v.id as variant_id, v.size, v.color, v.stock, v.price as v_price, v.sale_price as v_sale,
            p.id as product_id, p.name, p.price as p_price, p.sale_price as p_sale,
            p.condition, p.is_published, p.is_sold_out, b.name as brand_name,
-           (select url from product_images i where i.product_id = p.id
-             order by sort_order, created_at limit 1) as image_url
+           (select i.url from product_images i where i.product_id = p.id
+             order by coalesce(i.color = v.color, false) desc, (i.color is null) desc, i.sort_order, i.created_at limit 1) as image_url
       into v_row
       from product_variants v
       join products p on p.id = v.product_id
@@ -349,7 +360,7 @@ begin
     end if;
     if v_row.is_sold_out or v_row.stock < v_qty then
       raise exception using errcode = 'P0001', message = 'insufficient_stock',
-        detail = v_row.name || ' (' || v_row.size || ')';
+        detail = v_row.name || ' (' || case when v_row.color is not null then v_row.color || ' · ' || v_row.size else v_row.size end || ')';
     end if;
 
     v_price := effective_price(v_row.p_price, v_row.p_sale, v_row.v_price, v_row.v_sale);
@@ -358,7 +369,7 @@ begin
     v_total := v_total + v_price * v_qty;
     v_lines := v_lines || jsonb_build_object(
       'product_id', v_row.product_id, 'variant_id', v_row.variant_id,
-      'product_name', v_row.name, 'brand_name', v_row.brand_name, 'size', v_row.size,
+      'product_name', v_row.name, 'brand_name', v_row.brand_name, 'size', case when v_row.color is not null then v_row.color || ' · ' || v_row.size else v_row.size end,
       'condition', v_row.condition, 'image_url', v_row.image_url,
       'unit_price', v_price, 'quantity', v_qty, 'line_total', v_price * v_qty);
   end loop;

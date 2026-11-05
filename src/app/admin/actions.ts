@@ -61,8 +61,8 @@ export interface ProductPayload {
   is_featured: boolean;
   is_new_arrival: boolean;
   is_sold_out: boolean;
-  variants: { id?: string; size: string; stock: string | number; price: string; sale_price: string }[];
-  images: { id?: string; url: string; storage_path: string | null; alt: string }[];
+  variants: { id?: string; size: string; color?: string; stock: string | number; price: string; sale_price: string }[];
+  images: { id?: string; url: string; storage_path: string | null; alt: string; color?: string }[];
 }
 
 export async function saveProduct(p: ProductPayload): Promise<Result<{ id: string; slug: string }>> {
@@ -77,13 +77,15 @@ export async function saveProduct(p: ProductPayload): Promise<Result<{ id: strin
   if (sale === "invalid") return { ok: false, error: "De actieprijs is ongeldig." };
   if (sale !== null && sale >= price) return { ok: false, error: "De actieprijs moet lager zijn dan de verkoopprijs." };
 
-  const variants: { id?: string; size: string; stock: number; price: number | null; sale_price: number | null; sort_order: number }[] = [];
+  const variants: { id?: string; size: string; color: string | null; stock: number; price: number | null; sale_price: number | null; sort_order: number }[] = [];
   const seen = new Set<string>();
   for (const [i, v] of (p.variants ?? []).entries()) {
     const size = String(v.size ?? "").trim();
+    const color = String(v.color ?? "").trim().slice(0, 40) || null;
     if (!size) return { ok: false, error: `Maat ${i + 1}: vul een maat in (bijv. M of One size).` };
-    if (seen.has(size.toLowerCase())) return { ok: false, error: `De maat "${size}" staat er twee keer in.` };
-    seen.add(size.toLowerCase());
+    const dupKey = `${(color ?? "").toLowerCase()}|${size.toLowerCase()}`;
+    if (seen.has(dupKey)) return { ok: false, error: color ? `De combinatie ${color} · ${size} staat er twee keer in.` : `De maat "${size}" staat er twee keer in.` };
+    seen.add(dupKey);
     const stock = Number(v.stock);
     if (!Number.isInteger(stock) || stock < 0 || stock > 100000) return { ok: false, error: `Maat ${size}: voorraad moet een heel getal van 0 of hoger zijn.` };
     const vp = money(v.price, false);
@@ -91,8 +93,13 @@ export async function saveProduct(p: ProductPayload): Promise<Result<{ id: strin
     if (vp === "invalid" || vs === "invalid") return { ok: false, error: `Maat ${size}: ongeldige prijs.` };
     const compare = vp ?? price;
     if (vs !== null && vs >= compare) return { ok: false, error: `Maat ${size}: de actieprijs moet lager zijn dan de prijs.` };
-    variants.push({ id: v.id, size, stock, price: vp, sale_price: vs, sort_order: i });
+    variants.push({ id: v.id, size, color, stock, price: vp, sale_price: vs, sort_order: i });
   }
+
+  const withColor = variants.filter((v) => v.color).length;
+  if (withColor > 0 && withColor < variants.length) return { ok: false, error: "Vul bij alle maten een kleur in, of laat de kleur overal leeg." };
+  const colorKey = (c: string | null | undefined) => (c ?? "").trim().toLowerCase();
+  const knownColors = new Set(variants.map((v) => colorKey(v.color)));
 
   // Unique slug
   const base = slugify(p.slug?.trim() || name) || "product";
@@ -128,10 +135,10 @@ export async function saveProduct(p: ProductPayload): Promise<Result<{ id: strin
   if (removeV.length) await supabase.from("product_variants").delete().in("id", removeV);
   // temporary rename avoids unique (product_id, size) clashes when sizes are swapped
   for (const v of variants.filter((v) => v.id)) {
-    await supabase.from("product_variants").update({ size: `__tmp_${v.id}` }).eq("id", v.id!);
+    await supabase.from("product_variants").update({ size: `__tmp_${v.id}`, color: null }).eq("id", v.id!);
   }
   for (const v of variants) {
-    const data = { product_id: id, size: v.size, stock: v.stock, price: v.price, sale_price: v.sale_price, sort_order: v.sort_order };
+    const data = { product_id: id, size: v.size, color: v.color, stock: v.stock, price: v.price, sale_price: v.sale_price, sort_order: v.sort_order };
     const { error } = v.id
       ? await supabase.from("product_variants").update(data).eq("id", v.id)
       : await supabase.from("product_variants").insert(data);
@@ -149,7 +156,7 @@ export async function saveProduct(p: ProductPayload): Promise<Result<{ id: strin
     if (paths.length) await supabase.storage.from("product-images").remove(paths);
   }
   for (const [i, img] of images.entries()) {
-    const data = { product_id: id, url: img.url, storage_path: img.storage_path, alt: img.alt?.trim() || null, sort_order: i };
+    const data = { product_id: id, url: img.url, storage_path: img.storage_path, alt: img.alt?.trim() || null, color: colorKey(img.color) && knownColors.has(colorKey(img.color)) ? variants.find((v) => colorKey(v.color) === colorKey(img.color))!.color : null, sort_order: i };
     const { error } = img.id
       ? await supabase.from("product_images").update(data).eq("id", img.id)
       : await supabase.from("product_images").insert(data);

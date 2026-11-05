@@ -47,7 +47,7 @@ export function StockEditor({ rows }: { rows: Row[] }) {
                 <Link href={`/admin/producten/${r.productId}`} className="block truncate text-sm font-medium hover:underline">{r.product}</Link>
                 <p className="text-xs text-taupe">{r.brand ?? "Geen merk"}{!r.published && " · verborgen"}{r.soldOut && " · gemarkeerd als uitverkocht"}</p>
               </div>
-              <span className="w-20 text-sm">Maat <strong>{r.size}</strong></span>
+              <span className="min-w-20 text-sm">Maat <strong>{r.size}</strong></span>
               <div className="flex items-center">
                 <button type="button" className="a-btn a-btn-ghost min-h-9 w-9 px-0" aria-label="Min 1"
                   onClick={() => setValues((v) => ({ ...v, [r.id]: String(Math.max(0, (parseInt(val) || 0) - 1)) }))}>−</button>

@@ -34,8 +34,12 @@ export default async function OrderDetail({ params }: { params: Promise<{ id: st
               <div>
                 <dt className="a-label">Telefoon</dt>
                 <dd className="flex flex-wrap items-center gap-3">
-                  <a href={`tel:${order.phone}`} className="underline">{order.phone}</a>
-                  <a href={`https://wa.me/${whatsappNumber(order.phone)}`} target="_blank" rel="noopener noreferrer" className="a-btn a-btn-ghost min-h-8 px-2.5 text-xs">WhatsApp</a>
+                  {order.phone ? (
+                    <>
+                      <a href={`tel:${order.phone}`} className="underline">{order.phone}</a>
+                      <a href={`https://wa.me/${whatsappNumber(order.phone)}`} target="_blank" rel="noopener noreferrer" className="a-btn a-btn-ghost min-h-8 px-2.5 text-xs">WhatsApp</a>
+                    </>
+                  ) : <span className="text-taupe">Niet opgegeven — de klant koos Snapchat</span>}
                 </dd>
               </div>
               <div><dt className="a-label">Snapchat</dt><dd>{order.snapchat ? <a href={`https://snapchat.com/add/${order.snapchat}`} target="_blank" rel="noopener noreferrer" className="underline">{order.snapchat}</a> : <span className="text-taupe">Niet opgegeven</span>}</dd></div>

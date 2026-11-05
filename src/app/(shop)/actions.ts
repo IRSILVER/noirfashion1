@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { PRODUCT_SELECT, normalizeProduct } from "@/lib/catalog";
 import { sendOrderNotification } from "@/lib/notify";
-import { resolvePrice } from "@/lib/pricing";
+import { imagesForColor, resolvePrice, variantLabel } from "@/lib/pricing";
 import { getPublicClient } from "@/lib/supabase/public";
 import { ORDER_ERROR_MESSAGES, normalizePhone, validateCheckout, type CheckoutErrors, type CheckoutInput } from "@/lib/validation";
 
@@ -32,7 +32,7 @@ export async function getCartQuote(variantIds: string[]): Promise<CartQuoteLine[
       out.push({
         variantId: v.id, productId: p.id, available: !p.is_sold_out && v.stock > 0, stock: p.is_sold_out ? 0 : v.stock,
         price: price.price, compareAt: price.compareAt, name: p.name, slug: p.slug, brand: p.brand?.name ?? null,
-        size: v.size, image: p.images[0]?.url ?? null,
+        size: variantLabel(v), image: imagesForColor(p.images, v.color)[0]?.url ?? null,
       });
     }
   }
@@ -98,7 +98,7 @@ export async function placeOrder(input: CheckoutInput & { website?: string }, it
   const { data, error } = await db.rpc("place_order", {
     p_idempotency_key: idempotencyKey,
     p_name: clean.name.trim(),
-    p_phone: normalizePhone(clean.phone),
+    p_phone: normalizePhone(clean.phone) || null,
     p_snapchat: clean.snapchat.trim().replace(/^@/, "") || null,
     p_email: clean.email.trim() || null,
     p_notes: clean.notes.trim() || null,

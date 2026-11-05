@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/shop/AddToCart";
+import { ColorProvider } from "@/components/shop/ColorContext";
 import { ProductGallery } from "@/components/shop/ProductGallery";
 import { ProductGrid } from "@/components/shop/ProductCard";
 import { getProductBySlug, getPublishedProducts } from "@/lib/catalog";
 import { CONDITION_LABELS } from "@/lib/format";
-import { isAvailable, priceRange } from "@/lib/pricing";
+import { colorInStock, isAvailable, priceRange, productColors } from "@/lib/pricing";
 import { PRIVATE_ARRANGEMENT_TEXT, SITE_NAME, SITE_URL } from "@/lib/site";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -39,6 +40,7 @@ export default async function ProductPage({ params }: Props) {
     .map((x) => x.p);
 
   const available = isAvailable(product);
+  const firstColor = productColors(product).find((c) => colorInStock(product, c)) ?? productColors(product)[0] ?? null;
   const { price } = priceRange(product);
   const jsonLd = {
     "@context": "https://schema.org",
@@ -69,6 +71,7 @@ export default async function ProductPage({ params }: Props) {
           <span className="mx-2">/</span><span className="text-espresso">{product.name}</span>
         </nav>
 
+        <ColorProvider initial={firstColor}>
         <div className="grid gap-10 lg:grid-cols-[1.25fr_1fr] lg:gap-20">
           <ProductGallery images={product.images} name={product.name} />
 
@@ -116,6 +119,7 @@ export default async function ProductPage({ params }: Props) {
             </div>
           </div>
         </div>
+        </ColorProvider>
 
         {related.length > 0 && (
           <section className="mt-28 border-t border-line pt-20">

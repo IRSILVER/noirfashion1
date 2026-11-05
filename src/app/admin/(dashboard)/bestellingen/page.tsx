@@ -46,7 +46,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                     <span className="font-medium">{!o.is_seen && <span className="mr-2 inline-block size-2 rounded-full bg-champagne" />}{o.order_number}</span>
                     <StatusBadge status={o.status} />
                   </div>
-                  <p className="mt-2 text-sm">{o.customer_name} · {o.phone}</p>
+                  <p className="mt-2 text-sm">{o.customer_name} · {o.phone ?? (o.snapchat ? `Snapchat: ${o.snapchat}` : "—")}</p>
                   <p className="mt-1 flex justify-between text-xs text-taupe"><span>{formatDateTime(o.created_at)}</span><span className="text-sm text-espresso">{formatPrice(o.total)}</span></p>
                 </Link>
               </li>
@@ -56,7 +56,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           <div className="a-card hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead className="border-b border-line bg-cream/40 text-left text-[0.7rem] uppercase tracking-[0.06em] text-taupe">
-                <tr><th className="px-4 py-3">Bestelnummer</th><th className="px-4 py-3">Datum</th><th className="px-4 py-3">Klant</th><th className="px-4 py-3">Telefoon</th><th className="px-4 py-3">Items</th><th className="px-4 py-3 text-right">Totaal</th><th className="px-4 py-3">Status</th></tr>
+                <tr><th className="px-4 py-3">Bestelnummer</th><th className="px-4 py-3">Datum</th><th className="px-4 py-3">Klant</th><th className="px-4 py-3">Telefoon / Snapchat</th><th className="px-4 py-3">Items</th><th className="px-4 py-3 text-right">Totaal</th><th className="px-4 py-3">Status</th></tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {orders.map((o) => (
@@ -64,7 +64,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                     <td className="px-4 py-3 font-medium"><Link href={`/admin/bestellingen/${o.id}`} className="underline-offset-4 hover:underline">{!o.is_seen && <span className="mr-2 inline-block size-2 rounded-full bg-champagne" />}{o.order_number}</Link></td>
                     <td className="whitespace-nowrap px-4 py-3 text-taupe">{formatDateTime(o.created_at)}</td>
                     <td className="px-4 py-3">{o.customer_name}</td>
-                    <td className="whitespace-nowrap px-4 py-3">{o.phone}</td>
+                    <td className="whitespace-nowrap px-4 py-3">{o.phone ?? (o.snapchat ? <span>Snapchat: {o.snapchat}</span> : "—")}{o.phone && o.snapchat && <span className="ml-2 text-taupe">· {o.snapchat}</span>}</td>
                     <td className="px-4 py-3">{o.items.reduce((s, i) => s + i.quantity, 0)}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-right">{formatPrice(o.total)}</td>
                     <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
