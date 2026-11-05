@@ -37,6 +37,8 @@ export interface ProductImage {
   url: string;
   storage_path: string | null;
   alt: string | null;
+  /** null = photo is shown for every colour */
+  color: string | null;
   sort_order: number;
 }
 
@@ -44,6 +46,8 @@ export interface ProductVariant {
   id: string;
   product_id: string;
   size: string;
+  /** null = this product has no colour choice */
+  color: string | null;
   stock: number;
   price: number | null;
   sale_price: number | null;
@@ -76,7 +80,7 @@ export interface Order {
   id: string;
   order_number: string;
   customer_name: string;
-  phone: string;
+  phone: string | null;
   snapchat: string | null;
   email: string | null;
   customer_notes: string | null;
