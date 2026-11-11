@@ -132,10 +132,10 @@ export function CheckoutForm() {
             <input id="f-name" autoComplete="name" value={values.name} onChange={set("name")} className="field" aria-invalid={!!errors.name} aria-describedby={errors.name ? "e-name" : undefined} required maxLength={100} />
           </Field>
           <p className="-mt-2 text-sm leading-relaxed text-brown">Hoe kunnen wij je bereiken? Vul <strong className="font-medium text-espresso">je telefoonnummer óf je Snapchat</strong> in. Eén van de twee is genoeg.</p>
-          <Field id="phone" label="Telefoonnummer" badge="Telefoon of Snapchat" error={errors.phone} hint="Hierop nemen wij contact met je op.">
+          <Field id="phone" label="Telefoonnummer" badge="Kies 1 van de 2" error={errors.phone} hint="Of vul hieronder je Snapchat in, dan hoef je dit niet in te vullen.">
             <input id="f-phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="06 12345678" value={values.phone} onChange={set("phone")} className="field" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "e-phone" : "h-phone"} maxLength={20} />
           </Field>
-          <Field id="snapchat" label="Snapchat-gebruikersnaam" badge="Telefoon of Snapchat" error={errors.snapchat} hint="Heb je geen Snapchat? Dan is je telefoonnummer genoeg.">
+          <Field id="snapchat" label="Snapchat-gebruikersnaam" badge="Kies 1 van de 2" error={errors.snapchat} hint="Of vul hierboven je telefoonnummer in, dan hoef je dit niet in te vullen.">
             <input id="f-snapchat" autoComplete="off" autoCapitalize="none" placeholder="gebruikersnaam" value={values.snapchat} onChange={set("snapchat")} className="field" aria-invalid={!!errors.snapchat} aria-describedby={errors.snapchat ? "e-snapchat" : "h-snapchat"} maxLength={31} />
           </Field>
           <Field id="email" label="E-mailadres" error={errors.email}>
